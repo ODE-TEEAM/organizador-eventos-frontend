@@ -1,11 +1,11 @@
 import { useState } from 'react';
 
 function Hoy() {
-  // Datos de ejemplo  basados en el prototipo de Figma
+  // Datos de ejemplo (mock) basados en el prototipo de Figma
   const gestiones = [
     {
       id: 1,
-      titulo: 'Confirmar menu con catering',
+      titulo: 'Confirmar menú con catering',
       evento: 'Boda de Laura & Carlos',
       estado: 'Pendiente',
       prioridad: 'Alta',
@@ -15,7 +15,7 @@ function Hoy() {
     },
     {
       id: 2,
-      titulo: 'Envio de invitaciones digitales',
+      titulo: 'Envío de invitaciones digitales',
       evento: 'Cumpleaños de Martina R.',
       estado: 'En progreso',
       prioridad: 'Alta',
@@ -25,7 +25,7 @@ function Hoy() {
     },
     {
       id: 3,
-      titulo: 'Confirmar reserva del salon principal',
+      titulo: 'Confirmar reserva del salón principal',
       evento: 'Evento Corporativo Nexo',
       estado: 'Pendiente',
       prioridad: 'Alta',
@@ -35,7 +35,7 @@ function Hoy() {
     },
     {
       id: 4,
-      titulo: 'Solicitar cotizacion a proveedor de sonido',
+      titulo: 'Solicitar cotización a proveedor de sonido',
       evento: 'Boda de Laura & Carlos',
       estado: 'Pendiente',
       prioridad: 'Media',
@@ -91,7 +91,6 @@ function Hoy() {
   const paraHoy = gestiones.filter(g => g.grupo === 'hoy');
   const proximas = gestiones.filter(g => g.grupo === 'proximas');
 
-  // Estilos simples
   const styles = {
     page: {
       fontFamily: 'Arial, sans-serif',
@@ -104,7 +103,9 @@ function Hoy() {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: '30px'
+      marginBottom: '30px',
+      flexWrap: 'wrap',
+      gap: '12px'
     },
     logo: {
       fontSize: '20px',
@@ -112,6 +113,23 @@ function Hoy() {
       display: 'flex',
       alignItems: 'center',
       gap: '8px'
+    },
+    nav: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '16px',
+      flexWrap: 'wrap'
+    },
+    link: {
+      textDecoration: 'none',
+      color: '#666',
+      fontSize: '15px'
+    },
+    linkActive: {
+      textDecoration: 'none',
+      color: '#1a1a1a',
+      fontWeight: '600',
+      fontSize: '15px'
     },
     btnCrear: {
       backgroundColor: '#1a1a1a',
@@ -167,15 +185,19 @@ function Hoy() {
     }
   };
 
+  // ========== ESTADO VACÍO ==========
   if (mostrarVacio) {
     return (
       <div style={styles.page}>
         <div style={styles.header}>
           <div style={styles.logo}>⬛ Eventos</div>
-          <div>
+          <div style={styles.nav}>
+            <a href="/hoy" style={styles.linkActive}>Hoy</a>
+            <a href="/crear" style={styles.link}>Crear</a>
+            <a href="/progreso" style={styles.link}>Progreso</a>
             <button 
               onClick={() => setMostrarVacio(false)} 
-              style={{ marginRight: '10px', background: 'none', border: 'none', cursor: 'pointer', color: '#666' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', fontSize: '14px' }}
             >
               Ver gestiones
             </button>
@@ -191,7 +213,7 @@ function Hoy() {
           <h2>No tienes gestiones urgentes para hoy</h2>
           <p style={{ color: '#666', marginBottom: '24px' }}>
             Cuando tengas eventos con gestiones pendientes,<br />
-            apareceran aqui organizadas por prioridad.
+            aparecerán aquí organizadas por prioridad.
           </p>
           <button style={styles.btnCrear}>+ Crear evento</button>
         </div>
@@ -199,25 +221,32 @@ function Hoy() {
     );
   }
 
+  // ========== VISTA NORMAL ==========
   return (
     <div style={styles.page}>
-      {/* Header */}
+      {/* Header + Navegación */}
       <div style={styles.header}>
         <div style={styles.logo}>⬛ Eventos</div>
-        <div>
+        
+        <div style={styles.nav}>
+          <a href="/hoy" style={styles.linkActive}>Hoy</a>
+          <a href="/crear" style={styles.link}>Crear</a>
+          <a href="/progreso" style={styles.link}>Progreso</a>
+          
           <button 
             onClick={() => setMostrarVacio(true)} 
-            style={{ marginRight: '10px', background: 'none', border: 'none', cursor: 'pointer', color: '#666' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', fontSize: '14px' }}
           >
             Ver estado vacío
           </button>
+          
           <button style={styles.btnCrear}>+ Crear evento</button>
         </div>
       </div>
 
       {/* Título */}
       <h1 style={styles.title}>Hoy</h1>
-      <p style={styles.subtitle}>Gestiones que requieren tu atencion</p>
+      <p style={styles.subtitle}>Gestiones que requieren tu atención</p>
 
       {/* Tarjetas resumen */}
       <div style={styles.cards}>
