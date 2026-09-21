@@ -1,10 +1,11 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Hoy from './pages/Hoy';
-import Crear from './pages/Crear';
-import Evento from './pages/Evento';
-import Login from './pages/Login';
-import Progreso from './pages/Progreso';
- 
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+import Hoy from "./pages/Hoy";
+import Crear from "./pages/Crear";
+import Evento from "./pages/Evento";
+import Login from "./pages/Login";
+import Progreso from "./pages/Progreso";
+
 function App() {
   return (
     <BrowserRouter>
