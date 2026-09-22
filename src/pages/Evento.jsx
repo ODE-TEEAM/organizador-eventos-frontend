@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 
 function Evento() {
   const { id } = useParams();
+  const location = useLocation();
 
   const [evento, setEvento] = useState(null);
   const [error, setError] = useState("");
+
+  // Si Crear.jsx redirigió aquí después de que alguna subtarea fallara al
+  // guardarse, viene en location.state.erroresSubtareas.
+  const erroresSubtareas = location.state?.erroresSubtareas;
 
   useEffect(() => {
     const obtenerEvento = async () => {
@@ -45,6 +50,18 @@ function Evento() {
     <div>
       <h1>{evento.nombre}</h1>
 
+      {erroresSubtareas && erroresSubtareas.length > 0 && (
+        <div style={{ background: "#fee2e2", color: "#991b1b", padding: "0.75rem", borderRadius: "8px", marginBottom: "1rem" }}>
+          <strong>Atención:</strong> el evento se creó, pero {erroresSubtareas.length}{" "}
+          gestión(es) logística(s) no se pudieron guardar. Puedes volver a intentarlo.
+          <ul>
+            {erroresSubtareas.map((msg, i) => (
+              <li key={i}>{msg}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <p>
         <strong>Tipo:</strong> {evento.tipo}
       </p>
@@ -66,6 +83,8 @@ function Evento() {
       </p>
 
       <h2>Subtareas logísticas</h2>
+
+      {evento.subtareas.length === 0 && <p>Aún no hay gestiones logísticas para este evento.</p>}
 
       {evento.subtareas.map((subtarea) => (
         <div key={subtarea.id}>
