@@ -1,6 +1,9 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 function Crear() {
+  const navigate = useNavigate();
+
   const [formulario, setFormulario] = useState({
     nombre: "",
     tipo: "",
@@ -46,6 +49,10 @@ function Crear() {
 
       console.log("Evento creado:", datos);
       setMensaje(`Evento creado correctamente. ID: ${datos.id}`);
+
+      // Redirección automática al detalle del evento
+      navigate(`/evento/${datos.id}`);
+
     } catch (error) {
       console.error(error);
       setMensaje("No se pudo conectar con el backend.");
