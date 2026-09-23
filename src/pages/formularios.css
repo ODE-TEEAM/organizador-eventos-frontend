@@ -1,0 +1,93 @@
+/* Estilos mínimos para el formulario de creación de evento (C2 - Sprint 1) */
+
+.pagina-crear {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.texto-ayuda {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.9rem;
+}
+
+.campo label {
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.campo input {
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.campo input[aria-invalid="true"] {
+  border-color: #dc2626;
+}
+
+.texto-ayuda-campo {
+  color: #6b7280;
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.error-campo {
+  color: #dc2626;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.estado-vacio {
+  color: #6b7280;
+  font-style: italic;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+}
+
+.lista-subtareas {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+}
+
+.lista-subtareas li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  margin-bottom: 0.4rem;
+}
+
+.alerta {
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  margin: 0.75rem 0;
+  font-size: 0.9rem;
+}
+
+.alerta-error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.alerta-exito {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.alerta-carga {
+  background: #e0f2fe;
+  color: #075985;
+}

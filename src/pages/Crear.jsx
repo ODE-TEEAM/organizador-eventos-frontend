@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import "./formularios.css";
 
 // Usa la variable de entorno que ya está en .env.example; si no existe,
 // cae de vuelta a la URL fija que ya tenías.
@@ -16,6 +17,7 @@ function Crear() {
     lugar: "",
     plazo_limite: "",
   });
+  const [erroresFormulario, setErroresFormulario] = useState({});
 
   // Lista de gestiones logísticas que el usuario arma ANTES de guardar
   // (aún no se envían al backend, solo viven en el navegador).
@@ -27,14 +29,23 @@ function Crear() {
   });
   const [errorSubtarea, setErrorSubtarea] = useState("");
 
-  const [mensaje, setMensaje] = useState("");
-  const [enviando, setEnviando] = useState(false);
+  // Estado UX explícito del envío del formulario completo:
+  // idle | guardando-evento | guardando-subtareas | exito | error
+  const [estadoEnvio, setEstadoEnvio] = useState("idle");
+  const [mensajeError, setMensajeError] = useState("");
+
+  const enviando =
+    estadoEnvio === "guardando-evento" || estadoEnvio === "guardando-subtareas";
 
   const manejarCambio = (e) => {
     setFormulario({
       ...formulario,
       [e.target.name]: e.target.value,
     });
+    // Si el usuario ya corrigió el campo, le quitamos el error apenas escribe.
+    if (erroresFormulario[e.target.name]) {
+      setErroresFormulario({ ...erroresFormulario, [e.target.name]: undefined });
+    }
   };
 
   const manejarCambioSubtarea = (e) => {
@@ -42,6 +53,20 @@ function Crear() {
       ...nuevaSubtarea,
       [e.target.name]: e.target.value,
     });
+  };
+
+  // Validación de campos obligatorios del EVENTO (front-end).
+  // El backend valida lo mismo (nombre requerido); esto es solo para dar
+  // feedback inmediato al organizador sin esperar la respuesta del servidor.
+  const validarFormulario = () => {
+    const errores = {};
+    if (!formulario.nombre.trim()) errores.nombre = "El nombre del evento es obligatorio.";
+    if (!formulario.tipo.trim()) errores.tipo = "Indica qué tipo de evento es (ej. Boda, Cumpleaños).";
+    if (!formulario.cliente.trim()) errores.cliente = "El cliente o contacto es obligatorio.";
+    if (!formulario.fecha_hora) errores.fecha_hora = "La fecha y hora del evento son obligatorias.";
+    if (!formulario.lugar.trim()) errores.lugar = "El lugar del evento es obligatorio.";
+    if (!formulario.plazo_limite) errores.plazo_limite = "El plazo límite es obligatorio.";
+    return errores;
   };
 
   const agregarSubtarea = () => {
@@ -92,11 +117,21 @@ function Crear() {
 
   const crearEvento = async (e) => {
     e.preventDefault();
-    setEnviando(true);
-    setMensaje("Creando evento...");
+    setMensajeError("");
+
+    // 0) Validación en cliente antes de llamar al backend.
+    const errores = validarFormulario();
+    setErroresFormulario(errores);
+    if (Object.keys(errores).length > 0) {
+      setEstadoEnvio("error");
+      setMensajeError("Revisa los campos marcados en rojo antes de continuar.");
+      return;
+    }
+
+    setEstadoEnvio("guardando-evento");
 
     try {
-      // 1) Crear el evento (igual que ya tenías)
+      // 1) Crear el evento
       const respuesta = await fetch(`${API_URL}/eventos/`, {
         method: "POST",
         headers: {
@@ -109,8 +144,13 @@ function Crear() {
 
       if (!respuesta.ok) {
         console.log(datos);
-        setMensaje("Error al crear el evento.");
-        setEnviando(false);
+        // El backend devuelve errores por campo (ej. {"nombre": ["..."]});
+        // los mostramos junto a cada input, igual que los del cliente.
+        if (datos && typeof datos === "object") {
+          setErroresFormulario(datos);
+        }
+        setEstadoEnvio("error");
+        setMensajeError("No se pudo crear el evento. Revisa los campos señalados.");
         return;
       }
 
@@ -120,7 +160,7 @@ function Crear() {
       // 2) Crear cada subtarea logística asociada a ese evento
       const erroresSubtareas = [];
       if (subtareas.length > 0) {
-        setMensaje(`Evento creado. Guardando ${subtareas.length} gestión(es) logística(s)...`);
+        setEstadoEnvio("guardando-subtareas");
 
         for (const subtarea of subtareas) {
           try {
@@ -132,116 +172,146 @@ function Crear() {
         }
       }
 
+      setEstadoEnvio("exito");
+
       // 3) Ir al detalle del evento; si alguna subtarea falló, se avisa allá
       navigate(`/evento/${eventoId}`, {
         state: erroresSubtareas.length > 0 ? { erroresSubtareas } : undefined,
       });
     } catch (error) {
       console.error(error);
-      setMensaje("No se pudo conectar con el backend.");
-      setEnviando(false);
+      setEstadoEnvio("error");
+      setMensajeError("No se pudo conectar con el servidor. Verifica tu conexión e intenta de nuevo.");
     }
   };
 
   return (
-    <div>
-      <h1>Crear Evento</h1>
-      <p>Aquí se creará un nuevo evento y su plan de trabajo.</p>
+    <div className="pagina-crear">
+      <h1>Crear evento</h1>
+      <p className="texto-ayuda">
+        Completa los datos del evento. Podrás agregar las gestiones logísticas
+        (salón, catering, invitaciones...) antes de guardar, o hacerlo después
+        desde el detalle del evento.
+      </p>
 
-      <form onSubmit={crearEvento}>
-        <div>
-          <label>Nombre del evento</label>
-          <br />
+      <form onSubmit={crearEvento} noValidate>
+        <div className="campo">
+          <label htmlFor="nombre">Nombre del evento</label>
           <input
+            id="nombre"
             type="text"
             name="nombre"
             value={formulario.nombre}
             onChange={manejarCambio}
-            required
+            placeholder="Ej. Boda de Camila y Julián"
+            aria-invalid={!!erroresFormulario.nombre}
           />
+          {erroresFormulario.nombre && (
+            <span className="error-campo">{erroresFormulario.nombre}</span>
+          )}
         </div>
 
-        <br />
-
-        <div>
-          <label>Tipo de evento</label>
-          <br />
+        <div className="campo">
+          <label htmlFor="tipo">Tipo de evento</label>
           <input
+            id="tipo"
             type="text"
             name="tipo"
             value={formulario.tipo}
             onChange={manejarCambio}
-            required
+            placeholder="Ej. Boda, Cumpleaños, Corporativo"
+            aria-invalid={!!erroresFormulario.tipo}
           />
+          {erroresFormulario.tipo && (
+            <span className="error-campo">{erroresFormulario.tipo}</span>
+          )}
         </div>
 
-        <br />
-
-        <div>
-          <label>Cliente</label>
-          <br />
+        <div className="campo">
+          <label htmlFor="cliente">Cliente</label>
           <input
+            id="cliente"
             type="text"
             name="cliente"
             value={formulario.cliente}
             onChange={manejarCambio}
-            required
+            placeholder="Nombre de la persona o empresa que contrata"
+            aria-invalid={!!erroresFormulario.cliente}
           />
+          {erroresFormulario.cliente && (
+            <span className="error-campo">{erroresFormulario.cliente}</span>
+          )}
         </div>
 
-        <br />
-
-        <div>
-          <label>Fecha y hora</label>
-          <br />
+        <div className="campo">
+          <label htmlFor="fecha_hora">Fecha y hora del evento</label>
           <input
+            id="fecha_hora"
             type="datetime-local"
             name="fecha_hora"
             value={formulario.fecha_hora}
             onChange={manejarCambio}
-            required
+            aria-invalid={!!erroresFormulario.fecha_hora}
           />
+          {erroresFormulario.fecha_hora && (
+            <span className="error-campo">{erroresFormulario.fecha_hora}</span>
+          )}
         </div>
 
-        <br />
-
-        <div>
-          <label>Lugar</label>
-          <br />
+        <div className="campo">
+          <label htmlFor="lugar">Lugar</label>
           <input
+            id="lugar"
             type="text"
             name="lugar"
             value={formulario.lugar}
             onChange={manejarCambio}
-            required
+            placeholder="Salón, dirección o ciudad"
+            aria-invalid={!!erroresFormulario.lugar}
           />
+          {erroresFormulario.lugar && (
+            <span className="error-campo">{erroresFormulario.lugar}</span>
+          )}
         </div>
 
-        <br />
-
-        <div>
-          <label>Plazo límite</label>
-          <br />
+        <div className="campo">
+          <label htmlFor="plazo_limite">Plazo límite</label>
           <input
+            id="plazo_limite"
             type="date"
             name="plazo_limite"
             value={formulario.plazo_limite}
             onChange={manejarCambio}
-            required
+            aria-invalid={!!erroresFormulario.plazo_limite}
           />
+          <span className="texto-ayuda-campo">
+            Fecha máxima para tener todo listo antes del evento.
+          </span>
+          {erroresFormulario.plazo_limite && (
+            <span className="error-campo">{erroresFormulario.plazo_limite}</span>
+          )}
         </div>
 
-        <br />
         <hr />
 
-        <h2>Plan logístico (opcional)</h2>
-        <p>Agrega aquí las gestiones logísticas del evento (reservar salón, enviar invitaciones, confirmar catering...).</p>
+        <h2>Plan logístico</h2>
+        <p className="texto-ayuda">
+          Agrega aquí las gestiones logísticas del evento (reservar salón,
+          enviar invitaciones, confirmar catering...). Es opcional: puedes
+          crear el evento sin gestiones y agregarlas después.
+        </p>
 
-        {subtareas.length > 0 && (
-          <ul>
+        {subtareas.length === 0 ? (
+          <p className="estado-vacio">
+            Aún no has agregado ninguna gestión logística.
+          </p>
+        ) : (
+          <ul className="lista-subtareas">
             {subtareas.map((s, index) => (
               <li key={index}>
-                {s.nombre} — plazo {s.plazo} — {s.horas_estimadas} h{" "}
+                <span>
+                  <strong>{s.nombre}</strong> — plazo {s.plazo} — {s.horas_estimadas} h
+                </span>
                 <button type="button" onClick={() => quitarSubtarea(index)}>
                   Quitar
                 </button>
@@ -250,10 +320,10 @@ function Crear() {
           </ul>
         )}
 
-        <div>
-          <label>Nombre de la gestión</label>
-          <br />
+        <div className="campo">
+          <label htmlFor="subtarea-nombre">Nombre de la gestión</label>
           <input
+            id="subtarea-nombre"
             type="text"
             name="nombre"
             value={nuevaSubtarea.nombre}
@@ -262,12 +332,10 @@ function Crear() {
           />
         </div>
 
-        <br />
-
-        <div>
-          <label>Plazo de la gestión</label>
-          <br />
+        <div className="campo">
+          <label htmlFor="subtarea-plazo">Plazo de la gestión</label>
           <input
+            id="subtarea-plazo"
             type="date"
             name="plazo"
             value={nuevaSubtarea.plazo}
@@ -275,12 +343,10 @@ function Crear() {
           />
         </div>
 
-        <br />
-
-        <div>
-          <label>Horas estimadas</label>
-          <br />
+        <div className="campo">
+          <label htmlFor="subtarea-horas">Horas estimadas</label>
           <input
+            id="subtarea-horas"
             type="number"
             step="0.5"
             min="0.5"
@@ -289,26 +355,39 @@ function Crear() {
             onChange={manejarCambioSubtarea}
             placeholder="Ej. 4"
           />
+          <span className="texto-ayuda-campo">Debe ser mayor a 0.</span>
         </div>
-
-        <br />
 
         <button type="button" onClick={agregarSubtarea}>
           Agregar gestión a la lista
         </button>
 
-        {errorSubtarea && <p style={{ color: "red" }}>{errorSubtarea}</p>}
+        {errorSubtarea && <p className="alerta alerta-error">{errorSubtarea}</p>}
 
-        <br />
-        <br />
         <hr />
+
+        {/* Estados UX visibles: carga, éxito y error */}
+        {estadoEnvio === "guardando-evento" && (
+          <p className="alerta alerta-carga">Creando el evento...</p>
+        )}
+        {estadoEnvio === "guardando-subtareas" && (
+          <p className="alerta alerta-carga">
+            Evento creado. Guardando {subtareas.length} gestión(es) logística(s)...
+          </p>
+        )}
+        {estadoEnvio === "exito" && (
+          <p className="alerta alerta-exito">
+            Evento creado correctamente. Redirigiendo al detalle...
+          </p>
+        )}
+        {estadoEnvio === "error" && mensajeError && (
+          <p className="alerta alerta-error">{mensajeError}</p>
+        )}
 
         <button type="submit" disabled={enviando}>
           {enviando ? "Guardando..." : "Crear evento"}
         </button>
       </form>
-
-      <p>{mensaje}</p>
     </div>
   );
 }
