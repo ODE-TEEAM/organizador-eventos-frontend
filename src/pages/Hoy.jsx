@@ -1,325 +1,222 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import Header from '../components/Header';
 
-function Hoy() {
-  // Datos de ejemplo (mock) basados en el prototipo de Figma
-  const gestiones = [
+export default function Hoy() {
+  // Datos de ejemplo (luego se reemplazan por la API)
+  const [gestiones] = useState([
     {
       id: 1,
-      titulo: 'Confirmar menú con catering',
-      evento: 'Boda de Laura & Carlos',
-      estado: 'Pendiente',
-      prioridad: 'Alta',
-      fecha: '14 sep 2026',
-      horas: '2h est.',
-      grupo: 'vencidas'
+      titulo: 'Confirmar catering',
+      evento: 'Boda Ana & Carlos',
+      fecha: '2026-09-28',
+      estado: 'pendiente',
+      prioridad: 'alta',
     },
     {
       id: 2,
-      titulo: 'Envío de invitaciones digitales',
-      evento: 'Cumpleaños de Martina R.',
-      estado: 'En progreso',
-      prioridad: 'Alta',
-      fecha: '15 sep 2026',
-      horas: '1h est.',
-      grupo: 'vencidas'
+      titulo: 'Enviar invitaciones',
+      evento: 'Cumpleaños 30',
+      fecha: '2026-09-28',
+      estado: 'pendiente',
+      prioridad: 'media',
     },
     {
       id: 3,
-      titulo: 'Confirmar reserva del salón principal',
-      evento: 'Evento Corporativo Nexo',
-      estado: 'Pendiente',
-      prioridad: 'Alta',
-      fecha: '16 sep 2026',
-      horas: '1h est.',
-      grupo: 'hoy'
+      titulo: 'Reservar local',
+      evento: 'Lanzamiento producto',
+      fecha: '2026-09-27',
+      estado: 'vencida',
+      prioridad: 'alta',
     },
     {
       id: 4,
-      titulo: 'Solicitar cotización a proveedor de sonido',
-      evento: 'Boda de Laura & Carlos',
-      estado: 'Pendiente',
-      prioridad: 'Media',
-      fecha: '16 sep 2026',
-      horas: '3h est.',
-      grupo: 'hoy'
+      titulo: 'Reunión con proveedor',
+      evento: 'Boda Ana & Carlos',
+      fecha: '2026-09-30',
+      estado: 'proxima',
+      prioridad: 'baja',
     },
-    {
-      id: 5,
-      titulo: 'Coordinar transporte de invitados',
-      evento: 'Boda de Laura & Carlos',
-      estado: 'En progreso',
-      prioridad: 'Media',
-      fecha: '16 sep 2026',
-      horas: '2h est.',
-      grupo: 'hoy'
-    },
-    {
-      id: 6,
-      titulo: 'Diseñar programa del evento',
-      evento: 'Evento Corporativo Nexo',
-      estado: 'Pendiente',
-      prioridad: 'Media',
-      fecha: '18 sep 2026',
-      horas: '4h est.',
-      grupo: 'proximas'
-    },
-    {
-      id: 7,
-      titulo: 'Seleccionar decoración floral',
-      evento: 'Cumpleaños de Martina R.',
-      estado: 'Pendiente',
-      prioridad: 'Baja',
-      fecha: '19 sep 2026',
-      horas: '2h est.',
-      grupo: 'proximas'
-    },
-    {
-      id: 8,
-      titulo: 'Revisar contrato con fotógrafo',
-      evento: 'Boda de Laura & Carlos',
-      estado: 'Pendiente',
-      prioridad: 'Baja',
-      fecha: '20 sep 2026',
-      horas: '1h est.',
-      grupo: 'proximas'
-    }
-  ];
+  ]);
 
-  const [mostrarVacio, setMostrarVacio] = useState(false);
+  const vencidas = gestiones.filter((g) => g.estado === 'vencida');
+  const paraHoy = gestiones.filter((g) => g.estado === 'pendiente');
+  const proximas = gestiones.filter((g) => g.estado === 'proxima');
 
-  const vencidas = gestiones.filter(g => g.grupo === 'vencidas');
-  const paraHoy = gestiones.filter(g => g.grupo === 'hoy');
-  const proximas = gestiones.filter(g => g.grupo === 'proximas');
-
-  const styles = {
-    page: {
-      fontFamily: 'Arial, sans-serif',
-      backgroundColor: '#f7f7f5',
-      minHeight: '100vh',
-      padding: '20px',
-      color: '#1a1a1a'
-    },
-    header: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '30px',
-      flexWrap: 'wrap',
-      gap: '12px'
-    },
-    logo: {
-      fontSize: '20px',
-      fontWeight: 'bold',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px'
-    },
-    nav: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '16px',
-      flexWrap: 'wrap'
-    },
-    link: {
-      textDecoration: 'none',
-      color: '#666',
-      fontSize: '15px'
-    },
-    linkActive: {
-      textDecoration: 'none',
-      color: '#1a1a1a',
-      fontWeight: '600',
-      fontSize: '15px'
-    },
-    btnCrear: {
-      backgroundColor: '#1a1a1a',
-      color: 'white',
-      border: 'none',
-      padding: '10px 18px',
-      borderRadius: '8px',
-      cursor: 'pointer',
-      fontWeight: 'bold'
-    },
-    title: {
-      fontSize: '32px',
-      fontWeight: 'bold',
-      marginBottom: '4px'
-    },
-    subtitle: {
-      color: '#666',
-      marginBottom: '24px'
-    },
-    cards: {
-      display: 'flex',
-      gap: '12px',
-      marginBottom: '30px',
-      flexWrap: 'wrap'
-    },
-    card: {
-      backgroundColor: 'white',
-      padding: '16px 20px',
-      borderRadius: '12px',
-      minWidth: '120px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
-    },
-    groupTitle: {
-      fontSize: '14px',
-      fontWeight: 'bold',
-      marginBottom: '12px',
-      marginTop: '24px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px'
-    },
-    gestion: {
-      backgroundColor: 'white',
-      padding: '14px 16px',
-      borderRadius: '10px',
-      marginBottom: '10px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-      borderLeft: '4px solid'
-    },
-    empty: {
-      textAlign: 'center',
-      padding: '80px 20px'
-    }
-  };
-
-  // ========== ESTADO VACÍO ==========
-  if (mostrarVacio) {
-    return (
-      <div style={styles.page}>
-        <div style={styles.header}>
-          <div style={styles.logo}>⬛ Eventos</div>
-          <div style={styles.nav}>
-            <a href="/hoy" style={styles.linkActive}>Hoy</a>
-            <a href="/crear" style={styles.link}>Crear</a>
-            <a href="/progreso" style={styles.link}>Progreso</a>
-            <button 
-              onClick={() => setMostrarVacio(false)} 
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', fontSize: '14px' }}
-            >
-              Ver gestiones
-            </button>
-            <button style={styles.btnCrear}>+ Crear evento</button>
-          </div>
-        </div>
-
-        <h1 style={styles.title}>Hoy</h1>
-        <p style={styles.subtitle}>Gestiones que requieren tu atención</p>
-
-        <div style={styles.empty}>
-          <div style={{ fontSize: '40px', marginBottom: '16px' }}>✅</div>
-          <h2>No tienes gestiones urgentes para hoy</h2>
-          <p style={{ color: '#666', marginBottom: '24px' }}>
-            Cuando tengas eventos con gestiones pendientes,<br />
-            aparecerán aquí organizadas por prioridad.
-          </p>
-          <button style={styles.btnCrear}>+ Crear evento</button>
-        </div>
-      </div>
-    );
-  }
-
-  // ========== VISTA NORMAL ==========
   return (
     <div style={styles.page}>
-      {/* Header + Navegación */}
-      <div style={styles.header}>
-        <div style={styles.logo}>⬛ Eventos</div>
-        
-        <div style={styles.nav}>
-          <a href="/hoy" style={styles.linkActive}>Hoy</a>
-          <a href="/crear" style={styles.link}>Crear</a>
-          <a href="/progreso" style={styles.link}>Progreso</a>
-          
-          <button 
-            onClick={() => setMostrarVacio(true)} 
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666', fontSize: '14px' }}
-          >
-            Ver estado vacío
-          </button>
-          
-          <button style={styles.btnCrear}>+ Crear evento</button>
-        </div>
-      </div>
+      <Header />
 
-      {/* Título */}
-      <h1 style={styles.title}>Hoy</h1>
-      <p style={styles.subtitle}>Gestiones que requieren tu atención</p>
+      <main style={styles.main}>
+        <div style={styles.topBar}>
+          <h1 style={styles.title}>Hoy</h1>
+          <Link to="/crear" style={styles.btnCrear}>
+            + Crear evento
+          </Link>
+        </div>
 
-      {/* Tarjetas resumen */}
-      <div style={styles.cards}>
-        <div style={styles.card}>
-          <div style={{ fontSize: '24px', fontWeight: 'bold' }}>8</div>
-          <div style={{ color: '#666', fontSize: '14px' }}>Total gestiones</div>
-        </div>
-        <div style={styles.card}>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#e11d48' }}>2</div>
-          <div style={{ color: '#666', fontSize: '14px' }}>Vencidas</div>
-        </div>
-        <div style={styles.card}>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#d97706' }}>3</div>
-          <div style={{ color: '#666', fontSize: '14px' }}>Para hoy</div>
-        </div>
-        <div style={styles.card}>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#16a34a' }}>3</div>
-          <div style={{ color: '#666', fontSize: '14px' }}>Completadas</div>
-        </div>
-      </div>
+        {/* Vencidas */}
+        {vencidas.length > 0 && (
+          <section style={styles.section}>
+            <h2 style={{ ...styles.sectionTitle, color: '#dc2626' }}>
+              Vencidas ({vencidas.length})
+            </h2>
+            <div style={styles.lista}>
+              {vencidas.map((g) => (
+                <GestionCard key={g.id} gestion={g} />
+              ))}
+            </div>
+          </section>
+        )}
 
-      {/* Vencidas */}
-      <div style={{ ...styles.groupTitle, color: '#e11d48' }}>
-        ● VENCIDAS <span style={{ background: '#fee2e2', padding: '2px 8px', borderRadius: '10px', fontSize: '12px' }}>{vencidas.length}</span>
-      </div>
-      {vencidas.map(g => (
-        <div key={g.id} style={{ ...styles.gestion, borderLeftColor: '#e11d48' }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{g.titulo}</div>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '6px' }}>{g.evento}</div>
-          <div style={{ fontSize: '13px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ background: '#f3f4f6', padding: '2px 8px', borderRadius: '10px' }}>{g.estado}</span>
-            <span style={{ background: '#fee2e2', color: '#be123c', padding: '2px 8px', borderRadius: '10px' }}>{g.prioridad}</span>
-            <span>📅 {g.fecha}</span>
-            <span>⏱️ {g.horas}</span>
-          </div>
-        </div>
-      ))}
+        {/* Para hoy */}
+        <section style={styles.section}>
+          <h2 style={styles.sectionTitle}>
+            Para hoy ({paraHoy.length})
+          </h2>
+          {paraHoy.length === 0 ? (
+            <p style={styles.empty}>No tienes gestiones para hoy 🎉</p>
+          ) : (
+            <div style={styles.lista}>
+              {paraHoy.map((g) => (
+                <GestionCard key={g.id} gestion={g} />
+              ))}
+            </div>
+          )}
+        </section>
 
-      {/* Para hoy */}
-      <div style={{ ...styles.groupTitle, color: '#d97706' }}>
-        ● PARA HOY <span style={{ background: '#ffedd5', padding: '2px 8px', borderRadius: '10px', fontSize: '12px' }}>{paraHoy.length}</span>
-      </div>
-      {paraHoy.map(g => (
-        <div key={g.id} style={{ ...styles.gestion, borderLeftColor: '#d97706' }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{g.titulo}</div>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '6px' }}>{g.evento}</div>
-          <div style={{ fontSize: '13px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ background: '#f3f4f6', padding: '2px 8px', borderRadius: '10px' }}>{g.estado}</span>
-            <span style={{ background: '#ffedd5', color: '#c2410c', padding: '2px 8px', borderRadius: '10px' }}>{g.prioridad}</span>
-            <span>📅 {g.fecha}</span>
-            <span>⏱️ {g.horas}</span>
-          </div>
-        </div>
-      ))}
-
-      {/* Próximas */}
-      <div style={{ ...styles.groupTitle, color: '#2563eb' }}>
-        ● PRÓXIMAS <span style={{ background: '#dbeafe', padding: '2px 8px', borderRadius: '10px', fontSize: '12px' }}>{proximas.length}</span>
-      </div>
-      {proximas.map(g => (
-        <div key={g.id} style={{ ...styles.gestion, borderLeftColor: '#2563eb' }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{g.titulo}</div>
-          <div style={{ fontSize: '14px', color: '#666', marginBottom: '6px' }}>{g.evento}</div>
-          <div style={{ fontSize: '13px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ background: '#f3f4f6', padding: '2px 8px', borderRadius: '10px' }}>{g.estado}</span>
-            <span style={{ background: '#dbeafe', color: '#1d4ed8', padding: '2px 8px', borderRadius: '10px' }}>{g.prioridad}</span>
-            <span>📅 {g.fecha}</span>
-            <span>⏱️ {g.horas}</span>
-          </div>
-        </div>
-      ))}
+        {/* Próximas */}
+        {proximas.length > 0 && (
+          <section style={styles.section}>
+            <h2 style={styles.sectionTitle}>
+              Próximas ({proximas.length})
+            </h2>
+            <div style={styles.lista}>
+              {proximas.map((g) => (
+                <GestionCard key={g.id} gestion={g} />
+              ))}
+            </div>
+          </section>
+        )}
+      </main>
     </div>
   );
 }
 
-export default Hoy;
+function GestionCard({ gestion }) {
+  return (
+    <Link to={`/evento/${gestion.id}`} style={styles.card}>
+      <div style={styles.cardLeft}>
+        <strong style={styles.cardTitulo}>{gestion.titulo}</strong>
+        <span style={styles.cardEvento}>{gestion.evento}</span>
+      </div>
+      <div style={styles.cardRight}>
+        <span
+          style={{
+            ...styles.badge,
+            backgroundColor:
+              gestion.prioridad === 'alta'
+                ? '#fee2e2'
+                : gestion.prioridad === 'media'
+                ? '#fef3c7'
+                : '#e0f2fe',
+            color:
+              gestion.prioridad === 'alta'
+                ? '#b91c1c'
+                : gestion.prioridad === 'media'
+                ? '#b45309'
+                : '#0369a1',
+          }}
+        >
+          {gestion.prioridad}
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+const styles = {
+  page: {
+    minHeight: '100vh',
+    backgroundColor: '#f8fafc',
+    fontFamily: 'system-ui, -apple-system, sans-serif',
+  },
+  main: {
+    maxWidth: '800px',
+    margin: '0 auto',
+    padding: '24px 16px',
+  },
+  topBar: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '28px',
+  },
+  title: {
+    margin: 0,
+    fontSize: '28px',
+    fontWeight: '700',
+    color: '#1e3a5f',
+  },
+  btnCrear: {
+    backgroundColor: '#1e3a5f',
+    color: 'white',
+    padding: '10px 18px',
+    borderRadius: '8px',
+    textDecoration: 'none',
+    fontSize: '14px',
+    fontWeight: '600',
+  },
+  section: {
+    marginBottom: '32px',
+  },
+  sectionTitle: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: '12px',
+  },
+  empty: {
+    color: '#64748b',
+    fontSize: '15px',
+    padding: '20px 0',
+  },
+  lista: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  card: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: '16px 18px',
+    borderRadius: '10px',
+    textDecoration: 'none',
+    color: 'inherit',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+    border: '1px solid #e2e8f0',
+  },
+  cardLeft: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  cardTitulo: {
+    fontSize: '15px',
+    color: '#1e293b',
+  },
+  cardEvento: {
+    fontSize: '13px',
+    color: '#64748b',
+  },
+  cardRight: {},
+  badge: {
+    fontSize: '12px',
+    fontWeight: '600',
+    padding: '4px 10px',
+    borderRadius: '20px',
+    textTransform: 'capitalize',
+  },
+};

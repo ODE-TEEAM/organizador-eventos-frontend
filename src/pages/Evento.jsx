@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation, Link } from "react-router-dom";
+import Header from "../components/Header";
+import { getAuthHeaders } from "../auth";
 import "./formularios.css";
 
 const ESTADO_LABEL = {
@@ -53,7 +55,10 @@ function Evento() {
     const obtenerEvento = async () => {
       try {
         const respuesta = await fetch(
-          `http://127.0.0.1:8000/api/eventos/${id}/`
+          `http://127.0.0.1:8000/api/eventos/${id}/`,
+          {
+            headers: getAuthHeaders(), // ← envía el token
+          }
         );
 
         const datos = await respuesta.json();
@@ -78,12 +83,15 @@ function Evento() {
   if (error) {
     return (
       <div className="pagina-evento">
-        <p className="alerta alerta-error">
-          <IconoError /> {error}
-        </p>
-        <Link to="/crear" className="enlace-secundario">
-          ← Volver a crear evento
-        </Link>
+        <Header />
+        <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px 16px" }}>
+          <p className="alerta alerta-error">
+            <IconoError /> {error}
+          </p>
+          <Link to="/crear" className="enlace-secundario">
+            ← Volver a crear evento
+          </Link>
+        </div>
       </div>
     );
   }
@@ -91,89 +99,96 @@ function Evento() {
   if (!evento) {
     return (
       <div className="pagina-evento">
-        <p className="alerta alerta-carga">
-          <span className="spinner" /> Cargando evento...
-        </p>
+        <Header />
+        <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px 16px" }}>
+          <p className="alerta alerta-carga">
+            <span className="spinner" /> Cargando evento...
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="pagina-evento">
-      {erroresSubtareas && erroresSubtareas.length > 0 && (
-        <p className="alerta alerta-error">
-          <IconoError />
-          <span>
-            <strong>Atención:</strong> el evento se creó, pero {erroresSubtareas.length}{" "}
-            gestión(es) logística(s) no se pudieron guardar. Puedes volver a intentarlo.
-            <ul>
-              {erroresSubtareas.map((msg, i) => (
-                <li key={i}>{msg}</li>
-              ))}
-            </ul>
-          </span>
-        </p>
-      )}
+      <Header />
 
-      <div className="tarjeta evento-header">
-        <h1>{evento.nombre}</h1>
-        <dl className="detalle-grid">
-          <dt>Tipo</dt>
-          <dd>{evento.tipo}</dd>
+      <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px 16px" }}>
+        {erroresSubtareas && erroresSubtareas.length > 0 && (
+          <p className="alerta alerta-error">
+            <IconoError />
+            <span>
+              <strong>Atención:</strong> el evento se creó, pero {erroresSubtareas.length}{" "}
+              gestión(es) logística(s) no se pudieron guardar. Puedes volver a intentarlo.
+              <ul>
+                {erroresSubtareas.map((msg, i) => (
+                  <li key={i}>{msg}</li>
+                ))}
+              </ul>
+            </span>
+          </p>
+        )}
 
-          <dt>Cliente</dt>
-          <dd>{evento.cliente}</dd>
+        <div className="tarjeta evento-header">
+          <h1>{evento.nombre}</h1>
+          <dl className="detalle-grid">
+            <dt>Tipo</dt>
+            <dd>{evento.tipo}</dd>
 
-          <dt>Fecha del evento</dt>
-          <dd>{formatearFecha(evento.fecha_hora)}</dd>
+            <dt>Cliente</dt>
+            <dd>{evento.cliente}</dd>
 
-          <dt>Lugar</dt>
-          <dd>{evento.lugar}</dd>
+            <dt>Fecha del evento</dt>
+            <dd>{formatearFecha(evento.fecha_hora)}</dd>
 
-          <dt>Plazo límite</dt>
-          <dd>{formatearSoloFecha(evento.plazo_limite)}</dd>
-        </dl>
-      </div>
+            <dt>Lugar</dt>
+            <dd>{evento.lugar}</dd>
 
-      <div className="paso-encabezado">
-        <h2>Plan logístico</h2>
-      </div>
-      <p className="texto-ayuda">
-        {evento.subtareas.length === 0
-          ? "Todavía no tienes gestiones registradas para este evento."
-          : `${evento.subtareas.length} gestión(es) registrada(s), ordenadas por plazo.`}
-      </p>
-
-      {evento.subtareas.length === 0 ? (
-        <p className="estado-vacio">
-          Aún no hay gestiones logísticas para este evento.
-        </p>
-      ) : (
-        <div className="lista-gestiones">
-          {evento.subtareas.map((subtarea) => (
-            <div
-              key={subtarea.id}
-              className="gestion-tarjeta"
-              data-estado={subtarea.estado}
-            >
-              <div className="gestion-info">
-                <h3>{subtarea.nombre}</h3>
-                <div className="gestion-meta">
-                  <span>Plazo: {formatearSoloFecha(subtarea.plazo)}</span>
-                  <span>{subtarea.horas_estimadas} h estimadas</span>
-                </div>
-              </div>
-              <span className="badge-estado" data-estado={subtarea.estado}>
-                {ESTADO_LABEL[subtarea.estado] || subtarea.estado}
-              </span>
-            </div>
-          ))}
+            <dt>Plazo límite</dt>
+            <dd>{formatearSoloFecha(evento.plazo_limite)}</dd>
+          </dl>
         </div>
-      )}
 
-      <Link to="/crear" className="enlace-secundario">
-        + Crear otro evento
-      </Link>
+        <div className="paso-encabezado">
+          <h2>Plan logístico</h2>
+        </div>
+        <p className="texto-ayuda">
+          {evento.subtareas.length === 0
+            ? "Todavía no tienes gestiones registradas para este evento."
+            : `${evento.subtareas.length} gestión(es) registrada(s), ordenadas por plazo.`}
+        </p>
+
+        {evento.subtareas.length === 0 ? (
+          <p className="estado-vacio">
+            Aún no hay gestiones logísticas para este evento.
+          </p>
+        ) : (
+          <div className="lista-gestiones">
+            {evento.subtareas.map((subtarea) => (
+              <div
+                key={subtarea.id}
+                className="gestion-tarjeta"
+                data-estado={subtarea.estado}
+              >
+                <div className="gestion-info">
+                  <h3>{subtarea.nombre}</h3>
+                  <div className="gestion-meta">
+                    <span>Plazo: {formatearSoloFecha(subtarea.plazo)}</span>
+                    <span>{subtarea.horas_estimadas} h estimadas</span>
+                  </div>
+                </div>
+                <span className="badge-estado" data-estado={subtarea.estado}>
+                  {ESTADO_LABEL[subtarea.estado] || subtarea.estado}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <Link to="/crear" className="enlace-secundario">
+          + Crear otro evento
+        </Link>
+      </div>
     </div>
   );
 }

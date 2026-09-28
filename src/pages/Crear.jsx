@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Header from "../components/Header";
+import { getAuthHeaders } from "../auth";
 import "./formularios.css";
 
 // Usa la variable de entorno que ya está en .env.example; si no existe,
@@ -193,9 +195,7 @@ function Crear() {
   const crearSubtareaEnBackend = async (eventoId, subtarea) => {
     const respuesta = await fetch(`${API_URL}/eventos/${eventoId}/subtareas/`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(), // ← envía el token
       body: JSON.stringify(subtarea),
     });
 
@@ -229,9 +229,7 @@ function Crear() {
       // 1) Crear el evento
       const respuesta = await fetch(`${API_URL}/eventos/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getAuthHeaders(), // ← envía el token
         body: JSON.stringify(formulario),
       });
 
@@ -282,245 +280,250 @@ function Crear() {
 
   return (
     <div className="pagina-crear">
-      <h1>Crear evento</h1>
-      <p className="subtitulo">
-        Completa estos dos pasos y te llevaremos directo a la página del evento,
-        donde verás todo lo que acabas de registrar.
-      </p>
+      {/* Header con logo + Cerrar sesión */}
+      <Header />
 
-      <form onSubmit={crearEvento} noValidate>
-        <div className="paso-encabezado">
-          <span className="paso-numero">1</span>
-          <h2>Datos del evento</h2>
-        </div>
-        <p className="texto-ayuda">Esta información es obligatoria.</p>
-
-        <div className="tarjeta">
-          <div className="campo">
-            <label htmlFor="nombre">Nombre del evento</label>
-            <input
-              id="nombre"
-              type="text"
-              name="nombre"
-              value={formulario.nombre}
-              onChange={manejarCambio}
-              placeholder="Ej. Boda de Camila y Julián"
-              aria-invalid={!!erroresFormulario.nombre}
-            />
-            {erroresFormulario.nombre && (
-              <span className="error-campo">
-                <IconoError /> {erroresFormulario.nombre}
-              </span>
-            )}
-          </div>
-
-          <div className="campo">
-            <label htmlFor="tipo">Tipo de evento</label>
-            <input
-              id="tipo"
-              type="text"
-              name="tipo"
-              value={formulario.tipo}
-              onChange={manejarCambio}
-              placeholder="Ej. Boda, Cumpleaños, Corporativo"
-              aria-invalid={!!erroresFormulario.tipo}
-            />
-            {erroresFormulario.tipo && (
-              <span className="error-campo">
-                <IconoError /> {erroresFormulario.tipo}
-              </span>
-            )}
-          </div>
-
-          <div className="campo">
-            <label htmlFor="cliente">Cliente</label>
-            <input
-              id="cliente"
-              type="text"
-              name="cliente"
-              value={formulario.cliente}
-              onChange={manejarCambio}
-              placeholder="Nombre de la persona o empresa que contrata"
-              aria-invalid={!!erroresFormulario.cliente}
-            />
-            {erroresFormulario.cliente && (
-              <span className="error-campo">
-                <IconoError /> {erroresFormulario.cliente}
-              </span>
-            )}
-          </div>
-
-          <div className="campo">
-            <label htmlFor="fecha_hora">Fecha y hora del evento</label>
-            <input
-              id="fecha_hora"
-              type="datetime-local"
-              name="fecha_hora"
-              value={formulario.fecha_hora}
-              onChange={manejarCambio}
-              min={ahoraLocalISO()}
-              aria-invalid={!!erroresFormulario.fecha_hora}
-            />
-            <span className="texto-ayuda-campo">Debe ser hoy o una fecha futura.</span>
-            {erroresFormulario.fecha_hora && (
-              <span className="error-campo">
-                <IconoError /> {erroresFormulario.fecha_hora}
-              </span>
-            )}
-          </div>
-
-          <div className="campo">
-            <label htmlFor="lugar">Lugar</label>
-            <input
-              id="lugar"
-              type="text"
-              name="lugar"
-              value={formulario.lugar}
-              onChange={manejarCambio}
-              placeholder="Salón, dirección o ciudad"
-              aria-invalid={!!erroresFormulario.lugar}
-            />
-            <span className="texto-ayuda-campo">
-              Mínimo 3 caracteres, con letras (ej. "Salón Los Almendros", no "pan").
-            </span>
-            {erroresFormulario.lugar && (
-              <span className="error-campo">
-                <IconoError /> {erroresFormulario.lugar}
-              </span>
-            )}
-          </div>
-
-          <div className="campo">
-            <label htmlFor="plazo_limite">Plazo límite</label>
-            <input
-              id="plazo_limite"
-              type="date"
-              name="plazo_limite"
-              value={formulario.plazo_limite}
-              onChange={manejarCambio}
-              min={hoyISO()}
-              aria-invalid={!!erroresFormulario.plazo_limite}
-            />
-            <span className="texto-ayuda-campo">
-              Fecha máxima para tener todo listo antes del evento. Debe ser hoy o futura.
-            </span>
-            {erroresFormulario.plazo_limite && (
-              <span className="error-campo">
-                <IconoError /> {erroresFormulario.plazo_limite}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="paso-encabezado">
-          <span className="paso-numero">2</span>
-          <h2>Plan logístico</h2>
-        </div>
-        <p className="texto-ayuda">
-          Agrega aquí las gestiones logísticas del evento (reservar salón, enviar
-          invitaciones, confirmar catering...). Este paso es opcional: puedes
-          crear el evento sin gestiones y agregarlas después desde su página.
+      <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px 16px" }}>
+        <h1>Crear evento</h1>
+        <p className="subtitulo">
+          Completa estos dos pasos y te llevaremos directo a la página del evento,
+          donde verás todo lo que acabas de registrar.
         </p>
 
-        <div className="tarjeta">
-          {subtareas.length === 0 ? (
-            <p className="estado-vacio">
-              Aún no has agregado ninguna gestión logística. Usa el formulario de
-              abajo para sumar la primera.
+        <form onSubmit={crearEvento} noValidate>
+          <div className="paso-encabezado">
+            <span className="paso-numero">1</span>
+            <h2>Datos del evento</h2>
+          </div>
+          <p className="texto-ayuda">Esta información es obligatoria.</p>
+
+          <div className="tarjeta">
+            <div className="campo">
+              <label htmlFor="nombre">Nombre del evento</label>
+              <input
+                id="nombre"
+                type="text"
+                name="nombre"
+                value={formulario.nombre}
+                onChange={manejarCambio}
+                placeholder="Ej. Boda de Camila y Julián"
+                aria-invalid={!!erroresFormulario.nombre}
+              />
+              {erroresFormulario.nombre && (
+                <span className="error-campo">
+                  <IconoError /> {erroresFormulario.nombre}
+                </span>
+              )}
+            </div>
+
+            <div className="campo">
+              <label htmlFor="tipo">Tipo de evento</label>
+              <input
+                id="tipo"
+                type="text"
+                name="tipo"
+                value={formulario.tipo}
+                onChange={manejarCambio}
+                placeholder="Ej. Boda, Cumpleaños, Corporativo"
+                aria-invalid={!!erroresFormulario.tipo}
+              />
+              {erroresFormulario.tipo && (
+                <span className="error-campo">
+                  <IconoError /> {erroresFormulario.tipo}
+                </span>
+              )}
+            </div>
+
+            <div className="campo">
+              <label htmlFor="cliente">Cliente</label>
+              <input
+                id="cliente"
+                type="text"
+                name="cliente"
+                value={formulario.cliente}
+                onChange={manejarCambio}
+                placeholder="Nombre de la persona o empresa que contrata"
+                aria-invalid={!!erroresFormulario.cliente}
+              />
+              {erroresFormulario.cliente && (
+                <span className="error-campo">
+                  <IconoError /> {erroresFormulario.cliente}
+                </span>
+              )}
+            </div>
+
+            <div className="campo">
+              <label htmlFor="fecha_hora">Fecha y hora del evento</label>
+              <input
+                id="fecha_hora"
+                type="datetime-local"
+                name="fecha_hora"
+                value={formulario.fecha_hora}
+                onChange={manejarCambio}
+                min={ahoraLocalISO()}
+                aria-invalid={!!erroresFormulario.fecha_hora}
+              />
+              <span className="texto-ayuda-campo">Debe ser hoy o una fecha futura.</span>
+              {erroresFormulario.fecha_hora && (
+                <span className="error-campo">
+                  <IconoError /> {erroresFormulario.fecha_hora}
+                </span>
+              )}
+            </div>
+
+            <div className="campo">
+              <label htmlFor="lugar">Lugar</label>
+              <input
+                id="lugar"
+                type="text"
+                name="lugar"
+                value={formulario.lugar}
+                onChange={manejarCambio}
+                placeholder="Salón, dirección o ciudad"
+                aria-invalid={!!erroresFormulario.lugar}
+              />
+              <span className="texto-ayuda-campo">
+                Mínimo 3 caracteres, con letras (ej. "Salón Los Almendros", no "pan").
+              </span>
+              {erroresFormulario.lugar && (
+                <span className="error-campo">
+                  <IconoError /> {erroresFormulario.lugar}
+                </span>
+              )}
+            </div>
+
+            <div className="campo">
+              <label htmlFor="plazo_limite">Plazo límite</label>
+              <input
+                id="plazo_limite"
+                type="date"
+                name="plazo_limite"
+                value={formulario.plazo_limite}
+                onChange={manejarCambio}
+                min={hoyISO()}
+                aria-invalid={!!erroresFormulario.plazo_limite}
+              />
+              <span className="texto-ayuda-campo">
+                Fecha máxima para tener todo listo antes del evento. Debe ser hoy o futura.
+              </span>
+              {erroresFormulario.plazo_limite && (
+                <span className="error-campo">
+                  <IconoError /> {erroresFormulario.plazo_limite}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="paso-encabezado">
+            <span className="paso-numero">2</span>
+            <h2>Plan logístico</h2>
+          </div>
+          <p className="texto-ayuda">
+            Agrega aquí las gestiones logísticas del evento (reservar salón, enviar
+            invitaciones, confirmar catering...). Este paso es opcional: puedes
+            crear el evento sin gestiones y agregarlas después desde su página.
+          </p>
+
+          <div className="tarjeta">
+            {subtareas.length === 0 ? (
+              <p className="estado-vacio">
+                Aún no has agregado ninguna gestión logística. Usa el formulario de
+                abajo para sumar la primera.
+              </p>
+            ) : (
+              <ul className="lista-subtareas">
+                {subtareas.map((s, index) => (
+                  <li key={index}>
+                    <span>
+                      <strong>{s.nombre}</strong> — plazo {s.plazo} — {s.horas_estimadas} h
+                    </span>
+                    <button type="button" onClick={() => quitarSubtarea(index)}>
+                      Quitar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="campo">
+              <label htmlFor="subtarea-nombre">Nombre de la gestión</label>
+              <input
+                id="subtarea-nombre"
+                type="text"
+                name="nombre"
+                value={nuevaSubtarea.nombre}
+                onChange={manejarCambioSubtarea}
+                placeholder="Ej. Reservar salón"
+              />
+            </div>
+
+            <div className="campo">
+              <label htmlFor="subtarea-plazo">Plazo de la gestión</label>
+              <input
+                id="subtarea-plazo"
+                type="date"
+                name="plazo"
+                value={nuevaSubtarea.plazo}
+                onChange={manejarCambioSubtarea}
+                min={hoyISO()}
+              />
+              <span className="texto-ayuda-campo">Debe ser hoy o una fecha futura.</span>
+            </div>
+
+            <div className="campo">
+              <label htmlFor="subtarea-horas">Horas estimadas</label>
+              <input
+                id="subtarea-horas"
+                type="number"
+                step="0.5"
+                min="0.5"
+                name="horas_estimadas"
+                value={nuevaSubtarea.horas_estimadas}
+                onChange={manejarCambioSubtarea}
+                placeholder="Ej. 4"
+              />
+              <span className="texto-ayuda-campo">Debe ser mayor a 0.</span>
+            </div>
+
+            <button type="button" className="boton-principal" onClick={agregarSubtarea}>
+              Agregar gestión a la lista
+            </button>
+
+            {errorSubtarea && (
+              <p className="alerta alerta-error">
+                <IconoError /> {errorSubtarea}
+              </p>
+            )}
+          </div>
+
+          {/* Estados UX visibles: carga, éxito y error */}
+          {estadoEnvio === "guardando-evento" && (
+            <p className="alerta alerta-carga">
+              <span className="spinner" /> Creando el evento...
             </p>
-          ) : (
-            <ul className="lista-subtareas">
-              {subtareas.map((s, index) => (
-                <li key={index}>
-                  <span>
-                    <strong>{s.nombre}</strong> — plazo {s.plazo} — {s.horas_estimadas} h
-                  </span>
-                  <button type="button" onClick={() => quitarSubtarea(index)}>
-                    Quitar
-                  </button>
-                </li>
-              ))}
-            </ul>
           )}
-
-          <div className="campo">
-            <label htmlFor="subtarea-nombre">Nombre de la gestión</label>
-            <input
-              id="subtarea-nombre"
-              type="text"
-              name="nombre"
-              value={nuevaSubtarea.nombre}
-              onChange={manejarCambioSubtarea}
-              placeholder="Ej. Reservar salón"
-            />
-          </div>
-
-          <div className="campo">
-            <label htmlFor="subtarea-plazo">Plazo de la gestión</label>
-            <input
-              id="subtarea-plazo"
-              type="date"
-              name="plazo"
-              value={nuevaSubtarea.plazo}
-              onChange={manejarCambioSubtarea}
-              min={hoyISO()}
-            />
-            <span className="texto-ayuda-campo">Debe ser hoy o una fecha futura.</span>
-          </div>
-
-          <div className="campo">
-            <label htmlFor="subtarea-horas">Horas estimadas</label>
-            <input
-              id="subtarea-horas"
-              type="number"
-              step="0.5"
-              min="0.5"
-              name="horas_estimadas"
-              value={nuevaSubtarea.horas_estimadas}
-              onChange={manejarCambioSubtarea}
-              placeholder="Ej. 4"
-            />
-            <span className="texto-ayuda-campo">Debe ser mayor a 0.</span>
-          </div>
-
-          <button type="button" className="boton-principal" onClick={agregarSubtarea}>
-            Agregar gestión a la lista
-          </button>
-
-          {errorSubtarea && (
+          {estadoEnvio === "guardando-subtareas" && (
+            <p className="alerta alerta-carga">
+              <span className="spinner" /> Evento creado. Guardando {subtareas.length}{" "}
+              gestión(es) logística(s)...
+            </p>
+          )}
+          {estadoEnvio === "exito" && (
+            <p className="alerta alerta-exito">
+              <IconoExito /> Evento creado correctamente. Redirigiendo al detalle...
+            </p>
+          )}
+          {estadoEnvio === "error" && mensajeError && (
             <p className="alerta alerta-error">
-              <IconoError /> {errorSubtarea}
+              <IconoError /> {mensajeError}
             </p>
           )}
-        </div>
 
-        {/* Estados UX visibles: carga, éxito y error */}
-        {estadoEnvio === "guardando-evento" && (
-          <p className="alerta alerta-carga">
-            <span className="spinner" /> Creando el evento...
-          </p>
-        )}
-        {estadoEnvio === "guardando-subtareas" && (
-          <p className="alerta alerta-carga">
-            <span className="spinner" /> Evento creado. Guardando {subtareas.length}{" "}
-            gestión(es) logística(s)...
-          </p>
-        )}
-        {estadoEnvio === "exito" && (
-          <p className="alerta alerta-exito">
-            <IconoExito /> Evento creado correctamente. Redirigiendo al detalle...
-          </p>
-        )}
-        {estadoEnvio === "error" && mensajeError && (
-          <p className="alerta alerta-error">
-            <IconoError /> {mensajeError}
-          </p>
-        )}
-
-        <button type="submit" className="boton-ancho" disabled={enviando}>
-          {enviando ? "Guardando..." : "Crear evento"}
-        </button>
-      </form>
+          <button type="submit" className="boton-ancho" disabled={enviando}>
+            {enviando ? "Guardando..." : "Crear evento"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
