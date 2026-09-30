@@ -1,33 +1,43 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { guardarSesion, estaAutenticado } from "../auth";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
-export default function Login() {
+export default function Registro() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+    password2: "",
+  });
   const [errores, setErrores] = useState({});
   const [errorGeneral, setErrorGeneral] = useState("");
   const [loading, setLoading] = useState(false);
+  const [exito, setExito] = useState(false);
 
-  // Si ya está logueado → mandarlo a /hoy
-  useEffect(() => {
-    if (estaAutenticado()) {
-      navigate("/hoy", { replace: true });
+  const manejarCambio = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+    if (errores[e.target.name]) {
+      setErrores({ ...errores, [e.target.name]: undefined });
     }
-  }, [navigate]);
+  };
 
   const validar = () => {
     const nuevos = {};
-    if (!email.trim()) {
+    if (!form.email.trim()) {
       nuevos.email = "El correo es obligatorio.";
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
       nuevos.email = "Escribe un correo válido.";
     }
-    if (!password) {
+    if (!form.password) {
       nuevos.password = "La contraseña es obligatoria.";
+    } else if (form.password.length < 6) {
+      nuevos.password = "Mínimo 6 caracteres.";
+    }
+    if (!form.password2) {
+      nuevos.password2 = "Confirma tu contraseña.";
+    } else if (form.password !== form.password2) {
+      nuevos.password2 = "Las contraseñas no coinciden.";
     }
     return nuevos;
   };
@@ -35,32 +45,46 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorGeneral("");
+    setExito(false);
+
     const nuevosErrores = validar();
     setErrores(nuevosErrores);
-
     if (Object.keys(nuevosErrores).length > 0) return;
 
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/login/`, {
+      // Endpoint típico de registro. Si tu BE usa otro, cámbialo aquí.
+      const response = await fetch(`${API_URL}/register/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email: form.email,
+          password: form.password,
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
+        // Si el backend devuelve errores por campo
+        if (data.email) {
+          setErrores({ email: Array.isArray(data.email) ? data.email[0] : data.email });
+        }
         setErrorGeneral(
-          data.detail || data.message || "Correo o contraseña incorrectos."
+          data.detail || data.message || "No se pudo crear la cuenta. Intenta de nuevo."
         );
         setLoading(false);
         return;
       }
 
-      guardarSesion(data);
-      navigate("/hoy", { replace: true });
+      setExito(true);
+      setLoading(false);
+
+      // Después de 1.5s manda al login
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
     } catch (err) {
       setErrorGeneral(
         "No se pudo conectar con el servidor. Verifica que el backend esté encendido."
@@ -74,22 +98,19 @@ export default function Login() {
       <div style={styles.card}>
         <div style={styles.logoContainer}>
           <img src="/hestia-logo.png" alt="HEstia" style={styles.logo} />
-          <h1 style={styles.title}>HEstia</h1>
-          <p style={styles.subtitle}>Inicia sesión para organizar tus eventos</p>
+          <h1 style={styles.title}>Crear cuenta</h1>
+          <p style={styles.subtitle}>Regístrate para empezar a organizar eventos</p>
         </div>
 
         <form onSubmit={handleSubmit} style={styles.form} noValidate>
-          {/* Email */}
           <div style={styles.field}>
             <label style={styles.label}>Correo electrónico</label>
             <input
               type="email"
+              name="email"
               placeholder="ejemplo@correo.com"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (errores.email) setErrores({ ...errores, email: undefined });
-              }}
+              value={form.email}
+              onChange={manejarCambio}
               style={{
                 ...styles.input,
                 borderColor: errores.email ? "#dc2626" : "#cbd5e1",
@@ -99,18 +120,14 @@ export default function Login() {
             {errores.email && <p style={styles.errorCampo}>{errores.email}</p>}
           </div>
 
-          {/* Password */}
           <div style={styles.field}>
             <label style={styles.label}>Contraseña</label>
             <input
               type="password"
-              placeholder="Tu contraseña"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                if (errores.password)
-                  setErrores({ ...errores, password: undefined });
-              }}
+              name="password"
+              placeholder="Mínimo 6 caracteres"
+              value={form.password}
+              onChange={manejarCambio}
               style={{
                 ...styles.input,
                 borderColor: errores.password ? "#dc2626" : "#cbd5e1",
@@ -122,8 +139,31 @@ export default function Login() {
             )}
           </div>
 
-          {/* Error general */}
+          <div style={styles.field}>
+            <label style={styles.label}>Confirmar contraseña</label>
+            <input
+              type="password"
+              name="password2"
+              placeholder="Repite la contraseña"
+              value={form.password2}
+              onChange={manejarCambio}
+              style={{
+                ...styles.input,
+                borderColor: errores.password2 ? "#dc2626" : "#cbd5e1",
+              }}
+              disabled={loading}
+            />
+            {errores.password2 && (
+              <p style={styles.errorCampo}>{errores.password2}</p>
+            )}
+          </div>
+
           {errorGeneral && <p style={styles.errorGeneral}>{errorGeneral}</p>}
+          {exito && (
+            <p style={styles.exito}>
+              Cuenta creada correctamente. Redirigiendo al login...
+            </p>
+          )}
 
           <button
             type="submit"
@@ -134,14 +174,14 @@ export default function Login() {
             }}
             disabled={loading}
           >
-            {loading ? "Entrando..." : "Iniciar sesión"}
+            {loading ? "Creando cuenta..." : "Registrarme"}
           </button>
         </form>
 
         <p style={styles.footer}>
-          ¿No tienes cuenta?{" "}
-          <Link to="/registro" style={styles.link}>
-            Regístrate
+          ¿Ya tienes cuenta?{" "}
+          <Link to="/login" style={styles.link}>
+            Inicia sesión
           </Link>
         </p>
       </div>
@@ -180,7 +220,7 @@ const styles = {
   },
   title: {
     margin: 0,
-    fontSize: "28px",
+    fontSize: "26px",
     fontWeight: "700",
     color: "#1e3a5f",
   },
@@ -222,6 +262,15 @@ const styles = {
     color: "#dc2626",
     textAlign: "center",
     backgroundColor: "#fef2f2",
+    padding: "10px",
+    borderRadius: "8px",
+  },
+  exito: {
+    margin: 0,
+    fontSize: "14px",
+    color: "#166534",
+    textAlign: "center",
+    backgroundColor: "#dcfce7",
     padding: "10px",
     borderRadius: "8px",
   },

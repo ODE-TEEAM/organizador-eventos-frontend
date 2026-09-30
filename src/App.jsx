@@ -1,17 +1,19 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import ProtectedRoute from './components/ProtectedRoute';
-import Login from './pages/Login';
-import Hoy from './pages/Hoy';
-import Crear from './pages/Crear';
-import Evento from './pages/Evento';
-import Progreso from './pages/Progreso';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Login from "./pages/Login";
+import Registro from "./pages/Registro";
+import Hoy from "./pages/Hoy";
+import Crear from "./pages/Crear";
+import Evento from "./pages/Evento";
+import Progreso from "./pages/Progreso";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Ruta pública */}
+        {/* Rutas públicas */}
         <Route path="/login" element={<Login />} />
+        <Route path="/registro" element={<Registro />} />
 
         {/* Rutas protegidas */}
         <Route
@@ -55,7 +57,7 @@ function App() {
           }
         />
 
-        {/* Cualquier otra ruta → redirige a /hoy (o a /login si no está autenticado) */}
+        {/* Cualquier otra ruta → redirige a /hoy */}
         <Route path="*" element={<Navigate to="/hoy" replace />} />
       </Routes>
     </BrowserRouter>
