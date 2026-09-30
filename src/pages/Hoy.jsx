@@ -3,93 +3,12 @@ import { Link } from "react-router-dom";
 import Header from "../components/Header";
 import { getAuthHeaders } from "../auth";
 
-// URL base (igual que en Crear.jsx)
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
-// Datos de ejemplo (se usan mientras el backend no tenga /hoy)
-const DATOS_EJEMPLO = [
-  {
-    id: 1,
-    titulo: "Confirmar catering",
-    evento: "Boda Ana & Carlos",
-    evento_id: 10,
-    fecha: "2026-09-28",          // Vencida
-    horas_estimadas: 3,
-    estado: "pendiente",
-  },
-  {
-    id: 2,
-    titulo: "Enviar invitaciones",
-    evento: "Cumpleaños 30",
-    evento_id: 11,
-    fecha: "2026-09-30",          // Para hoy
-    horas_estimadas: 1.5,
-    estado: "pendiente",
-  },
-  {
-    id: 3,
-    titulo: "Reservar local",
-    evento: "Lanzamiento producto",
-    evento_id: 12,
-    fecha: "2026-09-29",          // Vencida
-    horas_estimadas: 2,
-    estado: "pendiente",
-  },
-  {
-    id: 4,
-    titulo: "Reunión con proveedor",
-    evento: "Boda Ana & Carlos",
-    evento_id: 10,
-    fecha: "2026-10-02",          // Próxima
-    horas_estimadas: 4,
-    estado: "pendiente",
-  },
-  {
-    id: 5,
-    titulo: "Confirmar decoración",
-    evento: "Cumpleaños 30",
-    evento_id: 11,
-    fecha: "2026-09-30",          // Para hoy (menos horas → sale primero)
-    horas_estimadas: 1,
-    estado: "pendiente",
-  },
-  {
-    id: 6,
-    titulo: "Llamar fotógrafo",
-    evento: "Boda Ana & Carlos",
-    evento_id: 10,
-    fecha: "2026-10-01",          // Próxima
-    horas_estimadas: 2,
-    estado: "pendiente",
-  },
-];
-
-function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function clasificarGestion(gestion) {
-  const hoy = hoyISO();
-  const fecha = gestion.fecha;
-
-  if (fecha < hoy) return "vencida";
-  if (fecha === hoy) return "para_hoy";
-  return "proxima";
-}
-
-function ordenarGestiones(lista) {
-  return [...lista].sort((a, b) => {
-    // 1. Por fecha (más cercana primero)
-    if (a.fecha < b.fecha) return -1;
-    if (a.fecha > b.fecha) return 1;
-
-    // 2. Desempate: menor esfuerzo estimado primero
-    return (a.horas_estimadas || 0) - (b.horas_estimadas || 0);
-  });
-}
-
 export default function Hoy() {
-  const [gestiones, setGestiones] = useState([]);
+  const [vencidas, setVencidas] = useState([]);
+  const [paraHoy, setParaHoy] = useState([]);
+  const [proximas, setProximas] = useState([]);
   const [estado, setEstado] = useState("cargando"); // cargando | listo | error | vacio
   const [mensajeError, setMensajeError] = useState("");
 
@@ -98,37 +17,42 @@ export default function Hoy() {
     setMensajeError("");
 
     try {
-      // Cuando el backend tenga el endpoint, descomenta esto:
-      /*
       const respuesta = await fetch(`${API_URL}/hoy/`, {
         headers: getAuthHeaders(),
       });
+
+      if (respuesta.status === 401) {
+        setMensajeError("Tu sesión expiró. Vuelve a iniciar sesión.");
+        setEstado("error");
+        return;
+      }
 
       if (!respuesta.ok) {
         throw new Error("No se pudieron cargar las gestiones.");
       }
 
       const datos = await respuesta.json();
-      // Se espera un array de gestiones o un objeto con grupos
-      const lista = Array.isArray(datos) ? datos : datos.gestiones || [];
-      */
 
-      // Por ahora usamos datos de ejemplo (simula una pequeña carga)
-      await new Promise((r) => setTimeout(r, 600));
-      const lista = DATOS_EJEMPLO;
+      const listaVencidas = datos.vencidas || [];
+      const listaParaHoy = datos.para_hoy || [];
+      const listaProximas = datos.proximas || [];
 
-      if (!lista || lista.length === 0) {
-        setGestiones([]);
+      setVencidas(listaVencidas);
+      setParaHoy(listaParaHoy);
+      setProximas(listaProximas);
+
+      const total =
+        listaVencidas.length + listaParaHoy.length + listaProximas.length;
+
+      if (total === 0) {
         setEstado("vacio");
-        return;
+      } else {
+        setEstado("listo");
       }
-
-      setGestiones(lista);
-      setEstado("listo");
     } catch (err) {
       console.error(err);
       setMensajeError(
-        "No se pudieron cargar las gestiones. Verifica tu conexión o que el servidor esté encendido."
+        "No se pudieron cargar las gestiones. Verifica que el backend esté encendido."
       );
       setEstado("error");
     }
@@ -138,23 +62,11 @@ export default function Hoy() {
     cargarGestiones();
   }, []);
 
-  // Agrupar y ordenar
-  const vencidas = ordenarGestiones(
-    gestiones.filter((g) => clasificarGestion(g) === "vencida")
-  );
-  const paraHoy = ordenarGestiones(
-    gestiones.filter((g) => clasificarGestion(g) === "para_hoy")
-  );
-  const proximas = ordenarGestiones(
-    gestiones.filter((g) => clasificarGestion(g) === "proxima")
-  );
-
   return (
     <div style={styles.page}>
       <Header />
 
       <main style={styles.main}>
-        {/* Cabecera */}
         <div style={styles.topBar}>
           <h1 style={styles.title}>Hoy</h1>
           <Link to="/crear" style={styles.btnCrear}>
@@ -177,7 +89,7 @@ export default function Hoy() {
           </p>
         </div>
 
-        {/* Estado: Cargando */}
+        {/* Cargando */}
         {estado === "cargando" && (
           <div style={styles.estadoBox}>
             <div style={styles.spinner} />
@@ -185,7 +97,7 @@ export default function Hoy() {
           </div>
         )}
 
-        {/* Estado: Error */}
+        {/* Error */}
         {estado === "error" && (
           <div style={styles.estadoBox}>
             <p style={{ color: "#dc2626", marginBottom: "12px" }}>
@@ -197,7 +109,7 @@ export default function Hoy() {
           </div>
         )}
 
-        {/* Estado: Vacío */}
+        {/* Vacío */}
         {estado === "vacio" && (
           <div style={styles.estadoBox}>
             <p style={{ marginBottom: "8px" }}>
@@ -212,10 +124,9 @@ export default function Hoy() {
           </div>
         )}
 
-        {/* Estado: Listo */}
+        {/* Listo */}
         {estado === "listo" && (
           <>
-            {/* Vencidas */}
             {vencidas.length > 0 && (
               <section style={styles.section}>
                 <h2 style={{ ...styles.sectionTitle, color: "#dc2626" }}>
@@ -229,15 +140,12 @@ export default function Hoy() {
               </section>
             )}
 
-            {/* Para hoy */}
             <section style={styles.section}>
               <h2 style={styles.sectionTitle}>
                 Para hoy ({paraHoy.length})
               </h2>
               {paraHoy.length === 0 ? (
-                <p style={styles.empty}>
-                  No tienes gestiones para hoy
-                </p>
+                <p style={styles.empty}>No tienes gestiones para hoy</p>
               ) : (
                 <div style={styles.lista}>
                   {paraHoy.map((g) => (
@@ -247,7 +155,6 @@ export default function Hoy() {
               )}
             </section>
 
-            {/* Próximas */}
             {proximas.length > 0 && (
               <section style={styles.section}>
                 <h2 style={styles.sectionTitle}>
@@ -293,17 +200,35 @@ function GestionCard({ gestion, tipo }) {
       </div>
       <div style={styles.cardRight}>
         {tipo === "vencida" && (
-          <span style={{ ...styles.badge, backgroundColor: "#fee2e2", color: "#b91c1c" }}>
+          <span
+            style={{
+              ...styles.badge,
+              backgroundColor: "#fee2e2",
+              color: "#b91c1c",
+            }}
+          >
             Vencida
           </span>
         )}
         {tipo === "para_hoy" && (
-          <span style={{ ...styles.badge, backgroundColor: "#fef3c7", color: "#b45309" }}>
+          <span
+            style={{
+              ...styles.badge,
+              backgroundColor: "#fef3c7",
+              color: "#b45309",
+            }}
+          >
             Hoy
           </span>
         )}
         {tipo === "proxima" && (
-          <span style={{ ...styles.badge, backgroundColor: "#e0f2fe", color: "#0369a1" }}>
+          <span
+            style={{
+              ...styles.badge,
+              backgroundColor: "#e0f2fe",
+              color: "#0369a1",
+            }}
+          >
             Próxima
           </span>
         )}
