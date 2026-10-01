@@ -9,6 +9,32 @@ export function obtenerUsuario() {
   return data ? JSON.parse(data) : null;
 }
 
+// Mezclar cambios (ej. nombre nuevo) en la sesión guardada,
+// manteniendo sincronizado el objeto anidado `user`.
+export function actualizarSesion(cambios) {
+  const actual = obtenerUsuario();
+  if (!actual) return null;
+
+  const nueva = { ...actual, ...cambios };
+  if (nueva.user) {
+    nueva.user = {
+      ...nueva.user,
+      ...(cambios.user || {}),
+      ...(cambios.nombre ? { nombre: cambios.nombre } : {}),
+    };
+  }
+
+  guardarSesion(nueva);
+  return nueva;
+}
+
+// Nombre visible del usuario (cae de vuelta al correo si no tiene nombre)
+export function obtenerNombre() {
+  const usuario = obtenerUsuario();
+  if (!usuario) return '';
+  return usuario.nombre || usuario.user?.nombre || usuario.email || 'Organizador';
+}
+
 // ¿Está autenticado?
 export function estaAutenticado() {
   return !!obtenerUsuario();

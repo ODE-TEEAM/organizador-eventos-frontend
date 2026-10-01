@@ -1,8 +1,18 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { guardarSesion, estaAutenticado } from "../auth";
+import AvatarAnimal from "../components/AvatarAnimal";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
+
+const FLOTANTES = [
+  { indice: 0, size: 88, style: { top: "14%", left: "7%", animationDelay: "0s" } },
+  { indice: 2, size: 64, style: { top: "9%", right: "10%", animationDelay: "1.2s" } },
+  { indice: 5, size: 76, style: { bottom: "16%", left: "12%", animationDelay: "2.1s" } },
+  { indice: 7, size: 96, style: { bottom: "10%", right: "7%", animationDelay: "0.6s" } },
+  { indice: 4, size: 54, style: { top: "44%", left: "22%", animationDelay: "3s" } },
+  { indice: 6, size: 58, style: { top: "52%", right: "20%", animationDelay: "1.8s" } },
+];
 
 export default function Login() {
   const navigate = useNavigate();
@@ -12,7 +22,6 @@ export default function Login() {
   const [errorGeneral, setErrorGeneral] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Si ya está logueado → mandarlo a /hoy
   useEffect(() => {
     if (estaAutenticado()) {
       navigate("/hoy", { replace: true });
@@ -70,19 +79,31 @@ export default function Login() {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.logoContainer}>
-          <img src="/hestia-logo.png" alt="HEstia" style={styles.logo} />
-          <h1 style={styles.title}>HEstia</h1>
-          <p style={styles.subtitle}>Inicia sesión para organizar tus eventos</p>
+    <div className="auth-pagina">
+      {FLOTANTES.map((f, i) => (
+        <AvatarAnimal
+          key={i}
+          indice={f.indice}
+          size={f.size}
+          className="auth-flotante"
+          style={f.style}
+        />
+      ))}
+
+      <div className="auth-tarjeta">
+        <div className="auth-cabecera">
+          <img src="/hestia-logo.png" alt="HEstia" className="auth-logo" />
+          <h1 className="auth-titulo">Bienvenido de nuevo</h1>
+          <p className="auth-subtitulo">
+            Entra a HEstia y ten cada evento bajo control.
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} style={styles.form} noValidate>
-          {/* Email */}
-          <div style={styles.field}>
-            <label style={styles.label}>Correo electrónico</label>
+        <form onSubmit={handleSubmit} noValidate>
+          <div className="campo">
+            <label htmlFor="login-email">Correo electrónico</label>
             <input
+              id="login-email"
               type="email"
               placeholder="ejemplo@correo.com"
               value={email}
@@ -90,19 +111,16 @@ export default function Login() {
                 setEmail(e.target.value);
                 if (errores.email) setErrores({ ...errores, email: undefined });
               }}
-              style={{
-                ...styles.input,
-                borderColor: errores.email ? "#dc2626" : "#cbd5e1",
-              }}
+              aria-invalid={!!errores.email}
               disabled={loading}
             />
-            {errores.email && <p style={styles.errorCampo}>{errores.email}</p>}
+            {errores.email && <span className="error-campo">{errores.email}</span>}
           </div>
 
-          {/* Password */}
-          <div style={styles.field}>
-            <label style={styles.label}>Contraseña</label>
+          <div className="campo">
+            <label htmlFor="login-password">Contraseña</label>
             <input
+              id="login-password"
               type="password"
               placeholder="Tu contraseña"
               value={password}
@@ -111,139 +129,31 @@ export default function Login() {
                 if (errores.password)
                   setErrores({ ...errores, password: undefined });
               }}
-              style={{
-                ...styles.input,
-                borderColor: errores.password ? "#dc2626" : "#cbd5e1",
-              }}
+              aria-invalid={!!errores.password}
               disabled={loading}
             />
             {errores.password && (
-              <p style={styles.errorCampo}>{errores.password}</p>
+              <span className="error-campo">{errores.password}</span>
             )}
           </div>
 
-          {/* Error general */}
-          {errorGeneral && <p style={styles.errorGeneral}>{errorGeneral}</p>}
+          {errorGeneral && (
+            <p className="alerta alerta-error" style={{ margin: "0 0 1rem" }}>
+              {errorGeneral}
+            </p>
+          )}
 
-          <button
-            type="submit"
-            style={{
-              ...styles.button,
-              opacity: loading ? 0.7 : 1,
-              cursor: loading ? "not-allowed" : "pointer",
-            }}
-            disabled={loading}
-          >
+          <button type="submit" className="btn btn-primario btn-ancho" disabled={loading}>
+            {loading && <span className="spinner" />}
             {loading ? "Entrando..." : "Iniciar sesión"}
           </button>
         </form>
 
-        <p style={styles.footer}>
+        <p className="auth-pie">
           ¿No tienes cuenta?{" "}
-          <Link to="/registro" style={styles.link}>
-            Regístrate
-          </Link>
+          <Link to="/registro">Regístrate gratis</Link>
         </p>
       </div>
     </div>
   );
 }
-
-const styles = {
-  container: {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f0f4f8",
-    padding: "20px",
-    fontFamily: "system-ui, -apple-system, sans-serif",
-  },
-  card: {
-    backgroundColor: "white",
-    borderRadius: "16px",
-    padding: "40px 32px",
-    width: "100%",
-    maxWidth: "400px",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-  },
-  logoContainer: {
-    textAlign: "center",
-    marginBottom: "28px",
-  },
-  logo: {
-    width: "72px",
-    height: "72px",
-    borderRadius: "50%",
-    objectFit: "cover",
-    marginBottom: "12px",
-  },
-  title: {
-    margin: 0,
-    fontSize: "28px",
-    fontWeight: "700",
-    color: "#1e3a5f",
-  },
-  subtitle: {
-    margin: "6px 0 0",
-    fontSize: "14px",
-    color: "#64748b",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "18px",
-  },
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-  },
-  label: {
-    fontSize: "14px",
-    fontWeight: "500",
-    color: "#334155",
-  },
-  input: {
-    padding: "12px 14px",
-    borderRadius: "8px",
-    border: "1px solid #cbd5e1",
-    fontSize: "15px",
-    outline: "none",
-  },
-  errorCampo: {
-    margin: 0,
-    fontSize: "13px",
-    color: "#dc2626",
-  },
-  errorGeneral: {
-    margin: 0,
-    fontSize: "14px",
-    color: "#dc2626",
-    textAlign: "center",
-    backgroundColor: "#fef2f2",
-    padding: "10px",
-    borderRadius: "8px",
-  },
-  button: {
-    marginTop: "8px",
-    padding: "14px",
-    borderRadius: "8px",
-    border: "none",
-    backgroundColor: "#1e3a5f",
-    color: "white",
-    fontSize: "16px",
-    fontWeight: "600",
-  },
-  footer: {
-    marginTop: "24px",
-    textAlign: "center",
-    fontSize: "14px",
-    color: "#64748b",
-  },
-  link: {
-    color: "#1e3a5f",
-    fontWeight: "600",
-    textDecoration: "none",
-  },
-};

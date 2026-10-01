@@ -279,11 +279,11 @@ function Crear() {
   };
 
   return (
-    <div className="pagina-crear">
-      {/* Header con logo + Cerrar sesión */}
+    <div className="pagina">
+      {/* Header con logo + menú de usuario */}
       <Header />
 
-      <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px 16px" }}>
+      <main className="contenedor contenedor-estrecho pagina-formulario">
         <h1>Crear evento</h1>
         <p className="subtitulo">
           Completa estos dos pasos y te llevaremos directo a la página del evento,
@@ -523,7 +523,7 @@ function Crear() {
             {enviando ? "Guardando..." : "Crear evento"}
           </button>
         </form>
-      </div>
+      </main>
     </div>
   );
 }

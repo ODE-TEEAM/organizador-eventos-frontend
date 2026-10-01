@@ -4,6 +4,8 @@ import Header from "../components/Header";
 import { getAuthHeaders } from "../auth";
 import "./formularios.css";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
+
 const ESTADO_LABEL = {
   PENDIENTE: "Pendiente",
   pendiente: "Pendiente",
@@ -54,12 +56,9 @@ function Evento() {
   useEffect(() => {
     const obtenerEvento = async () => {
       try {
-        const respuesta = await fetch(
-          `http://127.0.0.1:8000/api/eventos/${id}/`,
-          {
-            headers: getAuthHeaders(), // ← envía el token
-          }
-        );
+        const respuesta = await fetch(`${API_URL}/eventos/${id}/`, {
+          headers: getAuthHeaders(), // ← envía el token
+        });
 
         const datos = await respuesta.json();
 
@@ -82,38 +81,38 @@ function Evento() {
 
   if (error) {
     return (
-      <div className="pagina-evento">
+      <div className="pagina">
         <Header />
-        <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px 16px" }}>
+        <main className="contenedor contenedor-estrecho pagina-formulario">
           <p className="alerta alerta-error">
             <IconoError /> {error}
           </p>
           <Link to="/crear" className="enlace-secundario">
             ← Volver a crear evento
           </Link>
-        </div>
+        </main>
       </div>
     );
   }
 
   if (!evento) {
     return (
-      <div className="pagina-evento">
+      <div className="pagina">
         <Header />
-        <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px 16px" }}>
+        <main className="contenedor contenedor-estrecho pagina-formulario">
           <p className="alerta alerta-carga">
             <span className="spinner" /> Cargando evento...
           </p>
-        </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="pagina-evento">
+    <div className="pagina">
       <Header />
 
-      <div style={{ maxWidth: "800px", margin: "0 auto", padding: "24px 16px" }}>
+      <main className="contenedor contenedor-estrecho pagina-formulario">
         {erroresSubtareas && erroresSubtareas.length > 0 && (
           <p className="alerta alerta-error">
             <IconoError />
@@ -188,7 +187,7 @@ function Evento() {
         <Link to="/crear" className="enlace-secundario">
           + Crear otro evento
         </Link>
-      </div>
+      </main>
     </div>
   );
 }

@@ -1,92 +1,72 @@
 /* Sistema visual del flujo de creación y detalle de evento (C2 + C4).
-   Construido sobre las variables de index.css (--bg, --text, --text-h,
-   --border, --sans) y añade una paleta semántica clara:
-   azul = acción principal, verde = éxito, rojo = error, ámbar = carga. */
+   Construido sobre los tokens del diseño global en index.css
+   (--violeta, --teal, --borde, --texto...) con paleta semántica:
+   violeta = acción principal, verde = éxito, rojo = error, ámbar = carga. */
 
-:root {
-  --azul: #2563eb;
-  --azul-oscuro: #1d4ed8;
-  --azul-suave: #eff4ff;
-  --verde: #16a34a;
-  --verde-suave: #dcfce7;
-  --verde-texto: #166534;
-  --rojo: #dc2626;
-  --rojo-suave: #fee2e2;
-  --rojo-texto: #991b1b;
-  --ambar-suave: #fef3c7;
-  --ambar-texto: #92400e;
-  --sombra-tarjeta: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 14px rgba(15, 23, 42, 0.06);
+.pagina-formulario {
+  padding: 2.4rem 0 4rem;
 }
 
-.pagina-crear,
-.pagina-evento {
-  max-width: 640px;
-  margin: 2.5rem auto;
-  padding: 0 1.25rem 3.5rem;
-  font-family: var(--sans);
-  color: var(--text);
-}
-
-.pagina-crear h1,
-.pagina-evento h1 {
-  color: var(--text-h);
+.pagina-formulario h1 {
+  color: var(--tinta);
   font-size: 1.9rem;
+  font-weight: 800;
   margin-bottom: 0.35rem;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
 }
 
 .subtitulo {
-  color: var(--text);
-  opacity: 0.75;
-  font-size: 0.98rem;
+  color: var(--texto-suave);
+  font-size: 0.95rem;
   margin: 0 0 1.75rem;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 /* ---- Encabezado de paso (1, 2...) ---- */
 .paso-encabezado {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  margin: 2rem 0 0.4rem;
+  gap: 0.65rem;
+  margin: 2.1rem 0 0.4rem;
 }
 
 .paso-numero {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.6rem;
-  height: 1.6rem;
+  width: 1.7rem;
+  height: 1.7rem;
   border-radius: 999px;
-  background: var(--azul);
+  background: linear-gradient(135deg, var(--violeta) 0%, var(--violeta-fuerte) 100%);
   color: #fff;
   font-size: 0.85rem;
-  font-weight: 700;
+  font-weight: 800;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px -4px rgba(109, 77, 246, 0.6);
 }
 
 .paso-encabezado h2 {
   margin: 0;
-  font-size: 1.15rem;
-  color: var(--text-h);
+  font-size: 1.18rem;
+  font-weight: 800;
+  color: var(--tinta);
 }
 
 .texto-ayuda {
-  color: var(--text);
-  opacity: 0.75;
-  font-size: 0.92rem;
+  color: var(--texto-suave);
+  font-size: 0.9rem;
   margin: 0.15rem 0 1rem;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 /* ---- Tarjeta base ---- */
 .tarjeta {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.4rem 1.5rem;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 20px;
+  padding: 1.5rem 1.6rem;
   margin-bottom: 1.5rem;
-  box-shadow: var(--sombra-tarjeta);
+  box-shadow: var(--sombra-1);
 }
 
 /* ---- Campos de formulario ---- */
@@ -101,61 +81,59 @@
 }
 
 .campo label {
-  font-weight: 600;
-  color: var(--text-h);
-  margin-bottom: 0.35rem;
-  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--tinta);
+  margin-bottom: 0.4rem;
+  font-size: 0.88rem;
 }
 
 .campo input {
-  padding: 0.6rem 0.75rem;
-  border-radius: 9px;
-  border: 1.5px solid var(--border);
-  background: var(--bg);
-  color: var(--text-h);
-  font-family: var(--sans);
+  padding: 0.68rem 0.85rem;
+  border-radius: 12px;
+  border: 1.5px solid var(--borde);
+  background: var(--superficie);
+  color: var(--texto);
+  font-family: var(--fuente);
   font-size: 0.95rem;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .campo input::placeholder {
-  color: var(--text);
-  opacity: 0.45;
+  color: #aaa4c4;
 }
 
 .campo input:hover {
-  border-color: color-mix(in srgb, var(--border) 50%, var(--azul) 50%);
+  border-color: var(--violeta-borde);
 }
 
 .campo input:focus {
   outline: none;
-  border-color: var(--azul);
-  box-shadow: 0 0 0 3px var(--azul-suave);
+  border-color: var(--violeta);
+  box-shadow: 0 0 0 4px var(--violeta-suave);
 }
 
-.campo input[aria-invalid="true"] {
+.campo input[aria-invalid='true'] {
   border-color: var(--rojo);
 }
 
-.campo input[aria-invalid="true"]:focus {
-  box-shadow: 0 0 0 3px var(--rojo-suave);
+.campo input[aria-invalid='true']:focus {
+  box-shadow: 0 0 0 4px var(--rojo-suave);
 }
 
 .texto-ayuda-campo {
-  color: var(--text);
-  opacity: 0.65;
-  font-size: 0.8rem;
-  margin-top: 0.3rem;
+  color: var(--texto-tenue);
+  font-size: 0.79rem;
+  margin-top: 0.35rem;
 }
 
 .error-campo {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
   color: var(--rojo);
   font-size: 0.83rem;
-  font-weight: 500;
-  margin-top: 0.35rem;
+  font-weight: 600;
+  margin-top: 0.4rem;
 }
 
 /* ---- Estado vacío ---- */
@@ -163,13 +141,14 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  color: var(--text);
-  opacity: 0.75;
-  border: 1.5px dashed var(--border);
-  border-radius: 10px;
-  padding: 0.8rem 1rem;
+  color: var(--texto-suave);
+  border: 1.5px dashed var(--violeta-borde);
+  background: var(--violeta-suave);
+  border-radius: 14px;
+  padding: 0.9rem 1.1rem;
   margin-bottom: 1.1rem;
   font-size: 0.92rem;
+  line-height: 1.5;
 }
 
 /* ---- Lista de gestiones agregadas (Crear.jsx) ---- */
@@ -187,21 +166,24 @@
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--teal);
+  border-radius: 12px;
+  padding: 0.65rem 0.9rem;
   font-size: 0.92rem;
-  background: color-mix(in srgb, var(--bg) 92%, var(--text) 8%);
+  background: var(--superficie);
+  box-shadow: var(--sombra-1);
 }
 
 .lista-subtareas button {
   background: transparent;
   border: 1.5px solid var(--rojo);
-  color: var(--rojo);
-  border-radius: 7px;
-  padding: 0.3rem 0.7rem;
+  color: var(--rojo-texto);
+  border-radius: 9px;
+  padding: 0.32rem 0.75rem;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
+  font-family: var(--fuente);
   cursor: pointer;
   transition: background 0.15s ease;
 }
@@ -215,11 +197,11 @@
   display: flex;
   align-items: flex-start;
   gap: 0.6rem;
-  padding: 0.75rem 1rem;
-  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
   margin: 1rem 0;
   font-size: 0.92rem;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.45;
 }
 
@@ -259,91 +241,92 @@
   margin-top: 0.15rem;
 }
 
-@keyframes girar {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 /* ---- Botones ---- */
-button[type="submit"],
+button[type='submit'],
 .boton-principal {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  background: var(--azul);
+  gap: 0.45rem;
+  background: linear-gradient(135deg, var(--violeta) 0%, var(--violeta-fuerte) 100%);
   color: #fff;
   border: none;
-  border-radius: 9px;
-  padding: 0.65rem 1.3rem;
+  border-radius: 12px;
+  padding: 0.68rem 1.35rem;
+  font-family: var(--fuente);
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.05s ease;
+  box-shadow: 0 6px 18px -6px rgba(109, 77, 246, 0.55);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
 }
 
-button[type="submit"]:hover,
+button[type='submit']:hover,
 .boton-principal:hover {
-  background: var(--azul-oscuro);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px -8px rgba(109, 77, 246, 0.7);
 }
 
-button[type="submit"]:active,
+button[type='submit']:active,
 .boton-principal:active {
   transform: scale(0.98);
 }
 
-button[type="submit"]:disabled {
-  background: var(--azul);
+button[type='submit']:disabled,
+.boton-principal:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .boton-ancho {
   width: 100%;
   justify-content: center;
   font-size: 1rem;
-  padding: 0.75rem 1.3rem;
+  padding: 0.8rem 1.3rem;
   margin-top: 0.5rem;
 }
 
 hr {
   border: none;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--borde);
   margin: 1.75rem 0;
 }
 
 /* ---- Detalle del evento (Evento.jsx) ---- */
 
 .evento-header h1 {
-  margin-bottom: 1rem;
+  margin-bottom: 1.1rem;
+  font-size: 1.7rem;
+  font-weight: 800;
 }
 
 .detalle-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 1rem 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1.1rem 1.5rem;
 }
 
 .detalle-grid dt {
-  color: var(--text);
-  opacity: 0.6;
-  font-size: 0.78rem;
+  color: var(--texto-tenue);
+  font-size: 0.74rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 0.2rem;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.25rem;
 }
 
 .detalle-grid dd {
   margin: 0;
-  color: var(--text-h);
-  font-weight: 600;
-  font-size: 0.98rem;
+  color: var(--tinta);
+  font-weight: 700;
+  font-size: 0.96rem;
 }
 
 .lista-gestiones {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.7rem;
 }
 
 .gestion-tarjeta {
@@ -351,60 +334,66 @@ hr {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--azul);
-  border-radius: 10px;
-  padding: 0.85rem 1.1rem;
-  box-shadow: var(--sombra-tarjeta);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-left: 4px solid var(--violeta);
+  border-radius: 14px;
+  padding: 0.95rem 1.15rem;
+  box-shadow: var(--sombra-1);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.gestion-tarjeta[data-estado="EJECUTADA"],
-.gestion-tarjeta[data-estado="ejecutada"] {
+.gestion-tarjeta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -12px rgba(21, 10, 46, 0.2);
+}
+
+.gestion-tarjeta[data-estado='EJECUTADA'],
+.gestion-tarjeta[data-estado='ejecutada'] {
   border-left-color: var(--verde);
 }
 
-.gestion-tarjeta[data-estado="POSPUESTA"],
-.gestion-tarjeta[data-estado="pospuesta"] {
-  border-left-color: var(--text);
+.gestion-tarjeta[data-estado='POSPUESTA'],
+.gestion-tarjeta[data-estado='pospuesta'] {
+  border-left-color: var(--texto-tenue);
   opacity: 0.75;
 }
 
 .gestion-info h3 {
   margin: 0 0 0.3rem;
   font-size: 1rem;
-  color: var(--text-h);
+  font-weight: 700;
+  color: var(--tinta);
 }
 
 .gestion-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.2rem 1rem;
-  font-size: 0.85rem;
-  color: var(--text);
-  opacity: 0.75;
+  font-size: 0.84rem;
+  color: var(--texto-suave);
 }
 
 .badge-estado {
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 0.25rem 0.7rem;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 0.28rem 0.75rem;
   border-radius: 999px;
-  background: var(--azul-suave);
-  color: var(--azul-oscuro);
+  background: var(--violeta-suave);
+  color: var(--violeta-fuerte);
   white-space: nowrap;
 }
 
-.badge-estado[data-estado="EJECUTADA"],
-.badge-estado[data-estado="ejecutada"] {
+.badge-estado[data-estado='EJECUTADA'],
+.badge-estado[data-estado='ejecutada'] {
   background: var(--verde-suave);
   color: var(--verde-texto);
 }
 
-.badge-estado[data-estado="POSPUESTA"],
-.badge-estado[data-estado="pospuesta"] {
-  background: color-mix(in srgb, var(--text) 12%, transparent);
-  color: var(--text-h);
+.badge-estado[data-estado='POSPUESTA'],
+.badge-estado[data-estado='pospuesta'] {
+  background: var(--fondo);
+  color: var(--texto-suave);
 }
 
 .enlace-secundario {
@@ -412,29 +401,29 @@ hr {
   align-items: center;
   gap: 0.4rem;
   margin-top: 1.75rem;
-  color: var(--azul);
+  color: var(--violeta-fuerte);
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.92rem;
-  border: 1.5px solid var(--azul);
-  border-radius: 9px;
-  padding: 0.55rem 1.1rem;
-  transition: background 0.15s ease;
+  border: 1.5px solid var(--violeta-borde);
+  border-radius: 12px;
+  padding: 0.58rem 1.15rem;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .enlace-secundario:hover {
-  background: var(--azul-suave);
+  background: var(--violeta-suave);
+  border-color: var(--violeta);
 }
 
 /* ---- Responsive ---- */
 @media (max-width: 480px) {
-  .pagina-crear,
-  .pagina-evento {
-    margin: 1.25rem auto;
+  .pagina-formulario {
+    padding: 1.5rem 0 3rem;
   }
 
   .tarjeta {
-    padding: 1.1rem;
+    padding: 1.15rem;
   }
 
   .gestion-tarjeta {
