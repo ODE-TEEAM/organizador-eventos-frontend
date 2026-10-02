@@ -37,10 +37,10 @@ export default function Registro() {
     if (!form.email.trim()) {
       nuevos.email = "El correo es obligatorio.";
     } else if (!/\S+@\S+\.\S+/.test(form.email)) {
-      nuevos.email = "Escribe un correo válido.";
+      nuevos.email = "Revisa tu correo y asegúrate de que esté bien escrito.";
     }
     if (!form.password) {
-      nuevos.password = "La contraseña es obligatoria.";
+      nuevos.password = "Por favor, ingresa tu contraseña.";
     } else if (form.password.length < 6) {
       nuevos.password = "Mínimo 6 caracteres.";
     }

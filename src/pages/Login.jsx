@@ -31,12 +31,12 @@ export default function Login() {
   const validar = () => {
     const nuevos = {};
     if (!email.trim()) {
-      nuevos.email = "El correo es obligatorio.";
+      nuevos.email = "Ingresa tu correo para continuar.";
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      nuevos.email = "Escribe un correo válido.";
+      nuevos.email = "Revisa tu correo y asegúrate de que esté bien escrito.";nuevos.email = "Revisa tu correo y asegúrate de que esté bien escrito.";
     }
     if (!password) {
-      nuevos.password = "La contraseña es obligatoria.";
+      nuevos.password = "Por favor, ingresa tu contraseña..";
     }
     return nuevos;
   };
