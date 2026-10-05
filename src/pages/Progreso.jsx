@@ -17,7 +17,7 @@ function Progreso() {
   ];
 
   return (
-    <div className="pagina">
+    <div className="pagina pagina-oscura">
       <Header />
 
       <main className="contenedor contenedor-estrecho">

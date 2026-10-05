@@ -228,6 +228,38 @@ p {
   box-shadow: 0 0 0 4px var(--rojo-suave);
 }
 
+/* Input de contraseña con botón "ojo" (ver / ocultar) */
+.campo-con-ojo {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.campo-con-ojo input {
+  padding-right: 2.9rem;
+}
+
+.ojo-boton {
+  position: absolute;
+  right: 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--texto-tenue);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.ojo-boton:hover {
+  color: var(--violeta-fuerte);
+  background: var(--violeta-suave);
+}
+
 .texto-ayuda-campo {
   font-size: 0.78rem;
   color: var(--texto-suave);
@@ -1089,6 +1121,74 @@ p {
   font-size: 0.92rem;
   max-width: 400px;
   line-height: 1.55;
+}
+
+/* Fondo oscuro continuo en /hoy: el hero y el contenido comparten el mismo
+   degradado azul/violeta, sin el corte blanco que había antes. */
+.pagina-oscura {
+  background: radial-gradient(900px 420px at 88% -10%, rgba(109, 77, 246, 0.5), transparent 60%),
+    radial-gradient(700px 380px at 0% 4%, rgba(20, 184, 166, 0.2), transparent 60%),
+    linear-gradient(180deg, var(--tinta) 0%, var(--tinta-2) 45%, var(--tinta-3) 100%);
+}
+
+.pagina-oscura .hero-hoy {
+  background: transparent;
+}
+
+.pagina-oscura .seccion-titulo {
+  color: #fff;
+}
+
+.pagina-oscura .seccion-conteo {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--lima);
+}
+
+.pagina-oscura .texto-ayuda-campo {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.pagina-oscura .caja-regla {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.pagina-oscura .caja-regla ol {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.pagina-oscura .caja-regla ol strong {
+  color: #fff;
+}
+
+.pagina-oscura .caja-regla summary::before {
+  color: var(--lima);
+}
+
+/* Textos que van directamente sobre el fondo oscuro en /crear y /progreso.
+   Las tarjetas (.tarjeta, .progreso-card) siguen blancas para contrastar. */
+.pagina-oscura .pagina-formulario h1,
+.pagina-oscura .paso-encabezado h2,
+.pagina-oscura .cabecera-pagina h1 {
+  color: #fff;
+}
+
+.pagina-oscura .subtitulo,
+.pagina-oscura .texto-ayuda,
+.pagina-oscura .cabecera-pagina p,
+.pagina-oscura .progreso-nota {
+  color: rgba(255, 255, 255, 0.66);
+}
+
+.pagina-oscura .enlace-secundario {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.pagina-oscura .enlace-secundario:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 /* ---------- Vista /progreso ---------- */

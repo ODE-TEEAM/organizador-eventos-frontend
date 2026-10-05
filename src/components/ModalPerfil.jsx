@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { obtenerUsuario, actualizarSesion, getAuthHeaders } from '../auth';
 import AvatarAnimal, { animalDe } from './AvatarAnimal';
+import InputPassword from './InputPassword';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 
@@ -52,7 +53,7 @@ export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
     const limpio = nombre.trim();
 
     if (limpio.length < 3) {
-      setErrores({ nombre: 'Escribe un nombre de al menos 3 caracteres.' });
+      setErrores({ nombre: 'Tu nombre debe tener al menos 3 caracteres.' });
       return;
     }
 
@@ -73,9 +74,9 @@ export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
 
       const nuevaSesion = actualizarSesion({ nombre: datos.nombre });
       onActualizar?.(nuevaSesion);
-      setExito('Nombre actualizado correctamente.');
+      setExito('¡Listo! Tu nombre se actualizó correctamente.');
     } catch {
-      setErrores({ general: 'No se pudo conectar con el servidor.' });
+      setErrores({ general: 'No pudimos conectar con el servidor. Intenta de nuevo en unos segundos.' });
     }
     setCargando(false);
   };
@@ -85,11 +86,11 @@ export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
     setExito('');
     const nuevos = {};
 
-    if (!claveActual) nuevos.password_actual = 'Escribe tu contraseña actual.';
+    if (!claveActual) nuevos.password_actual = 'Escribe tu contraseña actual para confirmar que eres tú.';
     if (claveNueva.length < 6) {
-      nuevos.password_nueva = 'La nueva contraseña debe tener al menos 6 caracteres.';
+      nuevos.password_nueva = 'Tu nueva contraseña debe tener al menos 6 caracteres.';
     } else if (claveNueva !== claveConfirmar) {
-      nuevos.password_nueva = 'Las contraseñas nuevas no coinciden.';
+      nuevos.password_nueva = 'Las contraseñas nuevas no coinciden. Escríbelas igual en ambos campos.';
     }
 
     if (Object.keys(nuevos).length > 0) {
@@ -118,9 +119,9 @@ export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
       setClaveActual('');
       setClaveNueva('');
       setClaveConfirmar('');
-      setExito('Contraseña actualizada. Úsala la próxima vez que entres.');
+      setExito('¡Listo! Tu contraseña se actualizó. Úsala la próxima vez que entres.');
     } catch {
-      setErrores({ general: 'No se pudo conectar con el servidor.' });
+      setErrores({ general: 'No pudimos conectar con el servidor. Intenta de nuevo en unos segundos.' });
     }
     setCargando(false);
   };
@@ -206,17 +207,18 @@ export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
           <form onSubmit={guardarClave} noValidate>
             <div className="campo">
               <label htmlFor="perfil-clave-actual">Contraseña actual</label>
-              <input
+              <InputPassword
                 id="perfil-clave-actual"
-                type="password"
+                name="password_actual"
                 value={claveActual}
                 placeholder="Tu contraseña de siempre"
                 onChange={(e) => {
                   setClaveActual(e.target.value);
                   limpiarError('password_actual');
                 }}
-                aria-invalid={!!errores.password_actual}
+                ariaInvalid={!!errores.password_actual}
                 disabled={cargando}
+                autoComplete="current-password"
               />
               {errores.password_actual && (
                 <span className="error-campo">{errores.password_actual}</span>
@@ -225,17 +227,18 @@ export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
 
             <div className="campo">
               <label htmlFor="perfil-clave-nueva">Nueva contraseña</label>
-              <input
+              <InputPassword
                 id="perfil-clave-nueva"
-                type="password"
+                name="password_nueva"
                 value={claveNueva}
                 placeholder="Mínimo 6 caracteres"
                 onChange={(e) => {
                   setClaveNueva(e.target.value);
                   limpiarError('password_nueva');
                 }}
-                aria-invalid={!!errores.password_nueva}
+                ariaInvalid={!!errores.password_nueva}
                 disabled={cargando}
+                autoComplete="new-password"
               />
               {errores.password_nueva && (
                 <span className="error-campo">{errores.password_nueva}</span>
@@ -244,9 +247,9 @@ export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
 
             <div className="campo">
               <label htmlFor="perfil-clave-confirmar">Confirmar nueva contraseña</label>
-              <input
+              <InputPassword
                 id="perfil-clave-confirmar"
-                type="password"
+                name="password_confirmar"
                 value={claveConfirmar}
                 placeholder="Repite la nueva contraseña"
                 onChange={(e) => {
@@ -254,6 +257,7 @@ export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
                   limpiarError('password_nueva');
                 }}
                 disabled={cargando}
+                autoComplete="new-password"
               />
             </div>
 

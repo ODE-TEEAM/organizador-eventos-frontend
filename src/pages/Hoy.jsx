@@ -47,7 +47,7 @@ export default function Hoy() {
       });
 
       if (respuesta.status === 401) {
-        setMensajeError("Tu sesión expiró. Vuelve a iniciar sesión.");
+        setMensajeError("Tu sesión expiró. Vuelve a iniciar sesión para continuar.");
         setEstado("error");
         return;
       }
@@ -73,7 +73,7 @@ export default function Hoy() {
     } catch (err) {
       console.error(err);
       setMensajeError(
-        "No se pudieron cargar las gestiones. Verifica que el backend esté encendido."
+        "No pudimos cargar tus gestiones. Verifica que el backend esté encendido e intenta de nuevo."
       );
       setEstado("error");
     }
@@ -84,7 +84,7 @@ export default function Hoy() {
   }, []);
 
   return (
-    <div className="pagina">
+    <div className="pagina pagina-oscura">
       <Header />
 
       <section className="hero-hoy">

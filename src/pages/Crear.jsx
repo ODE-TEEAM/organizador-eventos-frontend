@@ -24,25 +24,18 @@ function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-// YYYY-MM-DDTHH:mm de ahora mismo (hora local), para min de datetime-local.
-function ahoraLocalISO() {
-  const ahora = new Date();
-  const local = new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 16);
-}
-
-// ¿La fecha+hora ingresada es hoy o en el futuro? (con 1 min de tolerancia)
-function esFechaHoraFutura(valor) {
-  if (!valor) return false;
-  const fecha = new Date(valor);
-  if (isNaN(fecha.getTime())) return false;
-  return fecha.getTime() >= Date.now() - 60000;
+// YYYY-MM-DDTHH:mm de hoy a medianoche (00:00). Es el valor por defecto del
+// campo de fecha y hora: mostramos 00:00 en lugar de la hora del computador.
+function hoyMedianocheLocal() {
+  return `${hoyISO()}T00:00`;
 }
 
 // ¿La fecha (sin hora) ingresada es hoy o en el futuro?
+// Acepta tanto "YYYY-MM-DD" como "YYYY-MM-DDTHH:mm" (toma solo la parte de fecha).
 function esFechaFutura(valor) {
   if (!valor) return false;
-  const fecha = new Date(`${valor}T00:00:00`);
+  const soloFecha = String(valor).slice(0, 10);
+  const fecha = new Date(`${soloFecha}T00:00:00`);
   if (isNaN(fecha.getTime())) return false;
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
@@ -76,7 +69,7 @@ function Crear() {
     nombre: "",
     tipo: "",
     cliente: "",
-    fecha_hora: "",
+    fecha_hora: hoyMedianocheLocal(),
     lugar: "",
     plazo_limite: "",
   });
@@ -135,8 +128,8 @@ function Crear() {
     }
     if (!formulario.fecha_hora) {
       errores.fecha_hora = "La fecha y hora del evento son obligatorias.";
-    } else if (!esFechaHoraFutura(formulario.fecha_hora)) {
-      errores.fecha_hora = "La fecha y hora del evento deben ser hoy o en el futuro.";
+    } else if (!esFechaFutura(formulario.fecha_hora)) {
+      errores.fecha_hora = "La fecha del evento debe ser hoy o una fecha futura.";
     }
     if (!esTextoValido(formulario.lugar)) {
       errores.lugar = "Escribe un lugar válido (ej. nombre del salón, dirección o ciudad), mínimo 3 caracteres.";
@@ -147,7 +140,7 @@ function Crear() {
       errores.plazo_limite = "El plazo límite debe ser hoy o una fecha futura.";
     } else if (
       formulario.fecha_hora &&
-      new Date(formulario.plazo_limite) > new Date(formulario.fecha_hora)
+      formulario.plazo_limite > formulario.fecha_hora.slice(0, 10)
     ) {
       errores.plazo_limite = "El plazo límite no puede ser después de la fecha del evento.";
     }
@@ -172,7 +165,7 @@ function Crear() {
     }
     if (
       formulario.fecha_hora &&
-      new Date(nuevaSubtarea.plazo) > new Date(formulario.fecha_hora)
+      nuevaSubtarea.plazo > formulario.fecha_hora.slice(0, 10)
     ) {
       setErrorSubtarea("El plazo de la gestión no puede ser después de la fecha del evento.");
       return;
@@ -230,7 +223,12 @@ function Crear() {
       const respuesta = await fetch(`${API_URL}/eventos/`, {
         method: "POST",
         headers: getAuthHeaders(), // ← envía el token
-        body: JSON.stringify(formulario),
+        // La fecha se envía en UTC (ISO con Z) para que el backend guarde el
+        // mismo instante que el organizador eligió en su hora local.
+        body: JSON.stringify({
+          ...formulario,
+          fecha_hora: new Date(formulario.fecha_hora).toISOString(),
+        }),
       });
 
       const datos = await respuesta.json();
@@ -279,7 +277,7 @@ function Crear() {
   };
 
   return (
-    <div className="pagina">
+    <div className="pagina pagina-oscura">
       {/* Header con logo + menú de usuario */}
       <Header />
 
@@ -360,10 +358,12 @@ function Crear() {
                 name="fecha_hora"
                 value={formulario.fecha_hora}
                 onChange={manejarCambio}
-                min={ahoraLocalISO()}
+                min={hoyMedianocheLocal()}
                 aria-invalid={!!erroresFormulario.fecha_hora}
               />
-              <span className="texto-ayuda-campo">Debe ser hoy o una fecha futura.</span>
+              <span className="texto-ayuda-campo">
+                La hora inicia en 00:00; ajústala a la hora real de tu evento. Debe ser hoy o una fecha futura.
+              </span>
               {erroresFormulario.fecha_hora && (
                 <span className="error-campo">
                   <IconoError /> {erroresFormulario.fecha_hora}

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { guardarSesion, estaAutenticado } from "../auth";
 import AvatarAnimal from "../components/AvatarAnimal";
+import InputPassword from "../components/InputPassword";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
@@ -31,12 +32,12 @@ export default function Login() {
   const validar = () => {
     const nuevos = {};
     if (!email.trim()) {
-      nuevos.email = "Ingresa tu correo para continuar.";
+      nuevos.email = "Escribe tu correo para poder entrar.";
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      nuevos.email = "Revisa tu correo y asegúrate de que esté bien escrito.";nuevos.email = "Revisa tu correo y asegúrate de que esté bien escrito.";
+      nuevos.email = "Ese correo no parece completo. Revísalo e intenta de nuevo.";
     }
     if (!password) {
-      nuevos.password = "Por favor, ingresa tu contraseña..";
+      nuevos.password = "Escribe tu contraseña para continuar.";
     }
     return nuevos;
   };
@@ -62,7 +63,8 @@ export default function Login() {
 
       if (!response.ok) {
         setErrorGeneral(
-          data.detail || data.message || "Correo o contraseña incorrectos."
+          "No reconocemos ese correo con esa contraseña. " +
+            "Revisa que estén bien escritos e intenta de nuevo."
         );
         setLoading(false);
         return;
@@ -72,7 +74,8 @@ export default function Login() {
       navigate("/hoy", { replace: true });
     } catch (err) {
       setErrorGeneral(
-        "No se pudo conectar con el servidor. Verifica que el backend esté encendido."
+        "No pudimos conectar con el servidor. " +
+          "Verifica que el backend esté encendido e intenta de nuevo."
       );
       setLoading(false);
     }
@@ -119,9 +122,9 @@ export default function Login() {
 
           <div className="campo">
             <label htmlFor="login-password">Contraseña</label>
-            <input
+            <InputPassword
               id="login-password"
-              type="password"
+              name="password"
               placeholder="Tu contraseña"
               value={password}
               onChange={(e) => {
@@ -129,8 +132,9 @@ export default function Login() {
                 if (errores.password)
                   setErrores({ ...errores, password: undefined });
               }}
-              aria-invalid={!!errores.password}
+              ariaInvalid={!!errores.password}
               disabled={loading}
+              autoComplete="current-password"
             />
             {errores.password && (
               <span className="error-campo">{errores.password}</span>

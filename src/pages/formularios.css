@@ -4,7 +4,9 @@
    violeta = acción principal, verde = éxito, rojo = error, ámbar = carga. */
 
 .pagina-formulario {
-  padding: 2.4rem 0 4rem;
+  /* Solo vertical: el margen lateral lo aporta .contenedor */
+  padding-top: 2.4rem;
+  padding-bottom: 4rem;
 }
 
 .pagina-formulario h1 {
@@ -323,6 +325,69 @@ hr {
   font-size: 0.96rem;
 }
 
+/* ---- Modo edición del evento ---- */
+.evento-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.1rem;
+}
+
+.evento-header-top h1 {
+  margin: 0;
+}
+
+.evento-acciones {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.boton-secundario {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--violeta-suave);
+  color: var(--violeta-fuerte);
+  border: 1.5px solid var(--violeta-borde);
+  border-radius: 12px;
+  padding: 0.6rem 1.1rem;
+  font-family: var(--fuente);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.boton-secundario:hover {
+  background: #e4dcff;
+  transform: translateY(-1px);
+}
+
+.boton-secundario:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.editar-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1.1rem;
+}
+
+.editar-grid .campo-full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 560px) {
+  .editar-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .lista-gestiones {
   display: flex;
   flex-direction: column;
@@ -419,7 +484,8 @@ hr {
 /* ---- Responsive ---- */
 @media (max-width: 480px) {
   .pagina-formulario {
-    padding: 1.5rem 0 3rem;
+    padding-top: 1.5rem;
+    padding-bottom: 3rem;
   }
 
   .tarjeta {

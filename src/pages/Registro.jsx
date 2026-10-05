@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import AvatarAnimal, { animalDe } from "../components/AvatarAnimal";
+import InputPassword from "../components/InputPassword";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
@@ -16,6 +17,7 @@ const FLOTANTES = [
 export default function Registro() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
+    nombre: "",
     email: "",
     password: "",
     password2: "",
@@ -34,20 +36,25 @@ export default function Registro() {
 
   const validar = () => {
     const nuevos = {};
+    if (!form.nombre.trim()) {
+      nuevos.nombre = "Cuéntanos tu nombre para personalizar tu cuenta.";
+    } else if (form.nombre.trim().length < 3) {
+      nuevos.nombre = "Tu nombre debe tener al menos 3 caracteres.";
+    }
     if (!form.email.trim()) {
-      nuevos.email = "El correo es obligatorio.";
+      nuevos.email = "Necesitamos tu correo para crear la cuenta.";
     } else if (!/\S+@\S+\.\S+/.test(form.email)) {
-      nuevos.email = "Revisa tu correo y asegúrate de que esté bien escrito.";
+      nuevos.email = "Ese correo no parece completo. Revísalo e intenta de nuevo.";
     }
     if (!form.password) {
-      nuevos.password = "Por favor, ingresa tu contraseña.";
+      nuevos.password = "Crea una contraseña para proteger tu cuenta.";
     } else if (form.password.length < 6) {
-      nuevos.password = "Mínimo 6 caracteres.";
+      nuevos.password = "Tu contraseña debe tener al menos 6 caracteres.";
     }
     if (!form.password2) {
-      nuevos.password2 = "Confirma tu contraseña.";
+      nuevos.password2 = "Repite tu contraseña para confirmarla.";
     } else if (form.password !== form.password2) {
-      nuevos.password2 = "Las contraseñas no coinciden.";
+      nuevos.password2 = "Las contraseñas no coinciden. Escríbelas igual en ambos campos.";
     }
     return nuevos;
   };
@@ -68,6 +75,7 @@ export default function Registro() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          nombre: form.nombre.trim(),
           email: form.email,
           password: form.password,
         }),
@@ -79,8 +87,11 @@ export default function Registro() {
         if (data.email) {
           setErrores({ email: Array.isArray(data.email) ? data.email[0] : data.email });
         }
+        if (data.nombre) {
+          setErrores({ nombre: Array.isArray(data.nombre) ? data.nombre[0] : data.nombre });
+        }
         setErrorGeneral(
-          data.detail || data.message || "No se pudo crear la cuenta. Intenta de nuevo."
+          "No pudimos crear tu cuenta. Revisa los campos marcados e intenta de nuevo."
         );
         setLoading(false);
         return;
@@ -94,7 +105,7 @@ export default function Registro() {
       }, 2600);
     } catch (err) {
       setErrorGeneral(
-        "No se pudo conectar con el servidor. Verifica que el backend esté encendido."
+        "No pudimos conectar con el servidor. Verifica que el backend esté encendido e intenta de nuevo."
       );
       setLoading(false);
     }
@@ -139,6 +150,24 @@ export default function Registro() {
 
             <form onSubmit={handleSubmit} noValidate>
               <div className="campo">
+                <label htmlFor="registro-nombre">Nombre</label>
+                <input
+                  id="registro-nombre"
+                  type="text"
+                  name="nombre"
+                  placeholder="Ej. Mauricio"
+                  value={form.nombre}
+                  onChange={manejarCambio}
+                  aria-invalid={!!errores.nombre}
+                  disabled={loading}
+                  autoComplete="name"
+                />
+                {errores.nombre && (
+                  <span className="error-campo">{errores.nombre}</span>
+                )}
+              </div>
+
+              <div className="campo">
                 <label htmlFor="registro-email">Correo electrónico</label>
                 <input
                   id="registro-email"
@@ -149,21 +178,22 @@ export default function Registro() {
                   onChange={manejarCambio}
                   aria-invalid={!!errores.email}
                   disabled={loading}
+                  autoComplete="email"
                 />
                 {errores.email && <span className="error-campo">{errores.email}</span>}
               </div>
 
               <div className="campo">
                 <label htmlFor="registro-password">Contraseña</label>
-                <input
+                <InputPassword
                   id="registro-password"
-                  type="password"
                   name="password"
                   placeholder="Mínimo 6 caracteres"
                   value={form.password}
                   onChange={manejarCambio}
-                  aria-invalid={!!errores.password}
+                  ariaInvalid={!!errores.password}
                   disabled={loading}
+                  autoComplete="new-password"
                 />
                 {errores.password && (
                   <span className="error-campo">{errores.password}</span>
@@ -172,15 +202,15 @@ export default function Registro() {
 
               <div className="campo">
                 <label htmlFor="registro-password2">Confirmar contraseña</label>
-                <input
+                <InputPassword
                   id="registro-password2"
-                  type="password"
                   name="password2"
                   placeholder="Repite la contraseña"
                   value={form.password2}
                   onChange={manejarCambio}
-                  aria-invalid={!!errores.password2}
+                  ariaInvalid={!!errores.password2}
                   disabled={loading}
+                  autoComplete="new-password"
                 />
                 {errores.password2 && (
                   <span className="error-campo">{errores.password2}</span>
