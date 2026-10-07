@@ -19,6 +19,32 @@ function formatearFechaCorta(valor) {
   return fecha.toLocaleDateString("es-CO", { day: "numeric", month: "short" });
 }
 
+function formatearFechaInput(valor) {
+  if (!valor) return "";
+
+  const partes = valor.split("-");
+
+  if (partes.length !== 3) return valor;
+
+  const [anio, mes, dia] = partes;
+
+  return `${dia}/${mes}/${anio}`;
+}
+
+function convertirFechaInputAISO(valor) {
+  const limpio = valor.replace(/\D/g, "").slice(0, 8);
+
+  let resultado = limpio;
+
+  if (limpio.length > 4) {
+    resultado = `${limpio.slice(0, 2)}/${limpio.slice(2, 4)}/${limpio.slice(4)}`;
+  } else if (limpio.length > 2) {
+    resultado = `${limpio.slice(0, 2)}/${limpio.slice(2)}`;
+  }
+
+  return resultado;
+}
+
 function fechaLargaHoy() {
   return new Date().toLocaleDateString("es-CO", {
     weekday: "long",
@@ -33,6 +59,10 @@ export default function Hoy() {
   const [proximas, setProximas] = useState([]);
   const [estado, setEstado] = useState("cargando"); // cargando | listo | error | vacio
   const [mensajeError, setMensajeError] = useState("");
+  const [gestionEditando, setGestionEditando] = useState(null);
+  const [nuevaFecha, setNuevaFecha] = useState("");
+  const [guardandoReprogramacion, setGuardandoReprogramacion] = useState(false);
+  const [mensajeReprogramacion, setMensajeReprogramacion] = useState("");
 
   const nombre = obtenerNombre();
   const email = obtenerUsuario()?.email || obtenerUsuario()?.user?.email || "";
@@ -82,6 +112,87 @@ export default function Hoy() {
   useEffect(() => {
     cargarGestiones();
   }, []);
+
+  useEffect(() => {
+  if (!gestionEditando) return;
+
+  const tecla = (e) => {
+    if (e.key === "Escape" && !guardandoReprogramacion) {
+      setGestionEditando(null);
+      setNuevaFecha("");
+      setMensajeReprogramacion("");
+    }
+  };
+
+  window.addEventListener("keydown", tecla);
+
+  return () => window.removeEventListener("keydown", tecla);
+}, [gestionEditando, guardandoReprogramacion]);
+
+  const abrirReprogramacion = (gestion) => {
+  setGestionEditando(gestion);
+  setNuevaFecha(gestion.fecha || "");
+  setMensajeReprogramacion("");
+};
+
+const cerrarReprogramacion = () => {
+  if (guardandoReprogramacion) return;
+
+  setGestionEditando(null);
+  setNuevaFecha("");
+  setMensajeReprogramacion("");
+};
+
+const guardarReprogramacion = async (e) => {
+  e.preventDefault();
+
+  if (!gestionEditando || !nuevaFecha) {
+    setMensajeReprogramacion("Selecciona una nueva fecha.");
+    return;
+  }
+
+  setGuardandoReprogramacion(true);
+  setMensajeReprogramacion("");
+
+  try {
+    const respuesta = await fetch(
+      `${API_URL}/subtareas/${gestionEditando.id}/`,
+      {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          plazo: nuevaFecha,
+        }),
+      }
+    );
+
+    const datos = await respuesta.json();
+
+    if (!respuesta.ok) {
+      setMensajeReprogramacion(
+        datos?.plazo?.[0] ||
+          datos?.detail ||
+          datos?.error ||
+          "No pudimos reprogramar la gestión."
+      );
+      setGuardandoReprogramacion(false);
+      return;
+    }
+
+    setGestionEditando(null);
+    setNuevaFecha("");
+    setMensajeReprogramacion("");
+
+    await cargarGestiones();
+  } catch (err) {
+    console.error(err);
+    setMensajeReprogramacion(
+      "No pudimos conectar con el servidor. Intenta nuevamente."
+    );
+  }
+
+  setGuardandoReprogramacion(false);
+};
 
   return (
     <div className="pagina pagina-oscura">
@@ -192,7 +303,12 @@ export default function Hoy() {
                 </h2>
                 <div className="gestion-lista">
                   {vencidas.map((g) => (
-                    <GestionCard key={g.id} gestion={g} tipo="vencida" />
+                    <GestionCard
+                    key={g.id}
+                    gestion={g}
+                    tipo="vencida"
+                    onReprogramar={abrirReprogramacion}
+                  />
                   ))}
                 </div>
               </section>
@@ -214,7 +330,12 @@ export default function Hoy() {
               ) : (
                 <div className="gestion-lista">
                   {paraHoy.map((g) => (
-                    <GestionCard key={g.id} gestion={g} tipo="para_hoy" />
+                    <GestionCard
+                    key={g.id}
+                    gestion={g}
+                    tipo="para_hoy"
+                    onReprogramar={abrirReprogramacion}
+                  />
                   ))}
                 </div>
               )}
@@ -232,7 +353,12 @@ export default function Hoy() {
                 </h2>
                 <div className="gestion-lista">
                   {proximas.map((g) => (
-                    <GestionCard key={g.id} gestion={g} tipo="proxima" />
+                    <GestionCard
+                    key={g.id}
+                    gestion={g}
+                    tipo="proxima"
+                    onReprogramar={abrirReprogramacion}
+                  />
                   ))}
                 </div>
               </section>
@@ -240,37 +366,140 @@ export default function Hoy() {
           </>
         )}
       </main>
+        {gestionEditando && (
+      <div className="modal-fondo" onMouseDown={cerrarReprogramacion}>
+        <div
+          className="modal"
+          onMouseDown={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reprogramar-titulo"
+        >
+          <div className="modal-cabecera">
+            <div>
+              <h2 id="reprogramar-titulo" className="modal-titulo">
+                Reprogramar gestión
+              </h2>
+
+              <p className="modal-subtitulo">
+                Cambia la fecha objetivo de "{gestionEditando.titulo}".
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="modal-cerrar"
+              onClick={cerrarReprogramacion}
+              disabled={guardandoReprogramacion}
+              aria-label="Cerrar"
+            >
+              ✕
+            </button>
+          </div>
+
+          <form onSubmit={guardarReprogramacion} noValidate>
+            <div className="campo">
+              <label htmlFor="nueva-fecha">Nueva fecha</label>
+
+              <input
+              id="nueva-fecha"
+              type="text"
+              value={formatearFechaInput(nuevaFecha)}
+              placeholder="dd/mm/aaaa"
+              maxLength={10}
+              inputMode="numeric"
+              autoComplete="off"
+              onChange={(e) => {
+                const texto = convertirFechaInputAISO(e.target.value);
+                const digitos = texto.replace(/\D/g, "");
+
+                if (digitos.length === 8) {
+                  const [dia, mes, anio] = [
+                    digitos.slice(0, 2),
+                    digitos.slice(2, 4),
+                    digitos.slice(4, 8),
+                  ];
+
+                  setNuevaFecha(`${anio}-${mes}-${dia}`);
+                } else {
+                  setNuevaFecha("");
+                }
+
+                setMensajeReprogramacion("");
+              }}
+              disabled={guardandoReprogramacion}
+            />
+            </div>
+
+            {mensajeReprogramacion && (
+              <p className="alerta alerta-error">
+                {mensajeReprogramacion}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              className="btn btn-primario btn-ancho"
+              disabled={guardandoReprogramacion}
+            >
+              {guardandoReprogramacion
+                ? "Guardando..."
+                : "Guardar nueva fecha"}
+            </button>
+          </form>
+        </div>
+      </div>
+    )}
+
     </div>
   );
 }
 
-function GestionCard({ gestion, tipo }) {
+function GestionCard({ gestion, tipo, onReprogramar }) {
   const config = TIPOS[tipo];
 
   return (
-    <Link to={`/evento/${gestion.evento_id || gestion.id}`} className="gestion-card" data-tipo={tipo}>
-      <div className="gestion-card-cuerpo">
+    <div className="gestion-card" data-tipo={tipo}>
+      <Link
+        to={`/evento/${gestion.evento_id || gestion.id}`}
+        className="gestion-card-cuerpo"
+      >
         <span className="gestion-card-titulo">{gestion.titulo}</span>
         <span className="gestion-card-evento">{gestion.evento}</span>
         <span className="gestion-card-meta">
           <span>{formatearFechaCorta(gestion.fecha)}</span>
           <span>{gestion.horas_estimadas} h estimadas</span>
         </span>
-      </div>
+      </Link>
+
       <span className={`badge ${config.badge}`}>{config.label}</span>
-      <svg
-        className="flecha"
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+
+      <button
+        type="button"
+        className="btn btn-fantasma"
+        onClick={() => onReprogramar(gestion)}
       >
-        <polyline points="9 18 15 12 9 6" />
-      </svg>
-    </Link>
+        Reprogramar
+      </button>
+
+      <Link
+        to={`/evento/${gestion.evento_id || gestion.id}`}
+        className="flecha"
+        aria-label={`Ver ${gestion.titulo}`}
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </Link>
+    </div>
   );
 }

@@ -24,10 +24,43 @@ function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-// YYYY-MM-DDTHH:mm de hoy a medianoche (00:00). Es el valor por defecto del
-// campo de fecha y hora: mostramos 00:00 en lugar de la hora del computador.
-function hoyMedianocheLocal() {
-  return `${hoyISO()}T00:00`;
+function formatearFechaVisual(fechaISO) {
+  if (!fechaISO) return "";
+
+  const [yyyy, mm, dd] = fechaISO.split("-");
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+function convertirFechaAISO(valor) {
+  const partes = valor.split("/");
+
+  if (partes.length !== 3) return "";
+
+  const [dd, mm, yyyy] = partes;
+
+  if (
+    dd.length !== 2 ||
+    mm.length !== 2 ||
+    yyyy.length !== 4
+  ) {
+    return "";
+  }
+
+  const fecha = new Date(
+    Number(yyyy),
+    Number(mm) - 1,
+    Number(dd)
+  );
+
+  if (
+    fecha.getFullYear() !== Number(yyyy) ||
+    fecha.getMonth() !== Number(mm) - 1 ||
+    fecha.getDate() !== Number(dd)
+  ) {
+    return "";
+  }
+
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 // ¿La fecha (sin hora) ingresada es hoy o en el futuro?
@@ -69,7 +102,7 @@ function Crear() {
     nombre: "",
     tipo: "",
     cliente: "",
-    fecha_hora: hoyMedianocheLocal(),
+    fecha_hora: "",
     lugar: "",
     plazo_limite: "",
   });
@@ -94,22 +127,73 @@ function Crear() {
     estadoEnvio === "guardando-evento" || estadoEnvio === "guardando-subtareas";
 
   const manejarCambio = (e) => {
+  const { name, value } = e.target;
+
+  if (name === "plazo_limite") {
+    // Solo permite números y máximo 8 dígitos: ddmmaaaa.
+    const digitos = value.replace(/\D/g, "").slice(0, 8);
+
+    let fechaVisual = digitos;
+
+    if (digitos.length > 2) {
+      fechaVisual = `${digitos.slice(0, 2)}/${digitos.slice(2)}`;
+    }
+
+    if (digitos.length > 4) {
+      fechaVisual = `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`;
+    }
+
+    const fechaISO = convertirFechaAISO(fechaVisual);
+
     setFormulario({
       ...formulario,
-      [e.target.name]: e.target.value,
+      plazo_limite: fechaISO || fechaVisual,
     });
-    // Si el usuario ya corrigió el campo, le quitamos el error apenas escribe.
-    if (erroresFormulario[e.target.name]) {
-      setErroresFormulario({ ...erroresFormulario, [e.target.name]: undefined });
-    }
-  };
+  } else {
+    setFormulario({
+      ...formulario,
+      [name]: value,
+    });
+  }
 
-  const manejarCambioSubtarea = (e) => {
+  // Si el usuario ya corrigió el campo, le quitamos el error apenas escribe.
+  if (erroresFormulario[name]) {
+    setErroresFormulario({
+      ...erroresFormulario,
+      [name]: undefined,
+    });
+  }
+};
+
+ const manejarCambioSubtarea = (e) => {
+  const { name, value } = e.target;
+
+  if (name === "plazo") {
+    const digitos = value.replace(/\D/g, "").slice(0, 8);
+
+    let fechaVisual = digitos;
+
+    if (digitos.length > 2) {
+      fechaVisual = `${digitos.slice(0, 2)}/${digitos.slice(2)}`;
+    }
+
+    if (digitos.length > 4) {
+      fechaVisual = `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`;
+    }
+
+    const fechaISO = convertirFechaAISO(fechaVisual);
+
     setNuevaSubtarea({
       ...nuevaSubtarea,
-      [e.target.name]: e.target.value,
+      plazo: fechaISO || fechaVisual,
     });
-  };
+  } else {
+    setNuevaSubtarea({
+      ...nuevaSubtarea,
+      [name]: value,
+    });
+  }
+};
 
   // Validación de campos obligatorios del EVENTO (front-end).
   // El backend valida lo mismo (nombre requerido); esto es solo para dar
@@ -135,15 +219,28 @@ function Crear() {
       errores.lugar = "Escribe un lugar válido (ej. nombre del salón, dirección o ciudad), mínimo 3 caracteres.";
     }
     if (!formulario.plazo_limite) {
-      errores.plazo_limite = "El plazo límite es obligatorio.";
-    } else if (!esFechaFutura(formulario.plazo_limite)) {
-      errores.plazo_limite = "El plazo límite debe ser hoy o una fecha futura.";
+  errores.plazo_limite = "El plazo límite es obligatorio.";
+} else {
+  const plazoISO = convertirFechaAISO(
+    formulario.plazo_limite.includes("-")
+      ? formatearFechaVisual(formulario.plazo_limite)
+      : formulario.plazo_limite
+  );
+
+    if (!plazoISO) {
+      errores.plazo_limite =
+        "Escribe una fecha válida en formato dd/mm/aaaa.";
+    } else if (!esFechaFutura(plazoISO)) {
+      errores.plazo_limite =
+        "El plazo límite debe ser hoy o una fecha futura.";
     } else if (
       formulario.fecha_hora &&
-      formulario.plazo_limite > formulario.fecha_hora.slice(0, 10)
+      plazoISO > formulario.fecha_hora.slice(0, 10)
     ) {
-      errores.plazo_limite = "El plazo límite no puede ser después de la fecha del evento.";
+      errores.plazo_limite =
+        "El plazo límite no puede ser después de la fecha del evento.";
     }
+  }
 
     return errores;
   };
@@ -353,14 +450,14 @@ function Crear() {
             <div className="campo">
               <label htmlFor="fecha_hora">Fecha y hora del evento</label>
               <input
-                id="fecha_hora"
-                type="datetime-local"
-                name="fecha_hora"
-                value={formulario.fecha_hora}
-                onChange={manejarCambio}
-                min={hoyMedianocheLocal()}
-                aria-invalid={!!erroresFormulario.fecha_hora}
-              />
+              id="fecha_hora"
+              type="datetime-local"
+              name="fecha_hora"
+              value={formulario.fecha_hora}
+              onChange={manejarCambio}
+              min={`${hoyISO()}T00:00`}
+              aria-invalid={!!erroresFormulario.fecha_hora}
+            />
               <span className="texto-ayuda-campo">
                 La hora inicia en 00:00; ajústala a la hora real de tu evento. Debe ser hoy o una fecha futura.
               </span>
@@ -394,15 +491,19 @@ function Crear() {
 
             <div className="campo">
               <label htmlFor="plazo_limite">Plazo límite</label>
-              <input
-                id="plazo_limite"
-                type="date"
-                name="plazo_limite"
-                value={formulario.plazo_limite}
-                onChange={manejarCambio}
-                min={hoyISO()}
-                aria-invalid={!!erroresFormulario.plazo_limite}
-              />
+             <input
+              id="plazo_limite"
+              type="text"
+              name="plazo_limite"
+              value={formulario.plazo_limite.includes("-")
+                ? formatearFechaVisual(formulario.plazo_limite)
+                : formulario.plazo_limite}
+              onChange={manejarCambio}
+              placeholder="dd/mm/aaaa"
+              maxLength={10}
+              inputMode="numeric"
+              aria-invalid={!!erroresFormulario.plazo_limite}
+            />
               <span className="texto-ayuda-campo">
                 Fecha máxima para tener todo listo antes del evento. Debe ser hoy o futura.
               </span>
@@ -460,13 +561,20 @@ function Crear() {
             <div className="campo">
               <label htmlFor="subtarea-plazo">Plazo de la gestión</label>
               <input
-                id="subtarea-plazo"
-                type="date"
-                name="plazo"
-                value={nuevaSubtarea.plazo}
-                onChange={manejarCambioSubtarea}
-                min={hoyISO()}
-              />
+              id="subtarea-plazo"
+              type="text"
+              name="plazo"
+              value={
+                nuevaSubtarea.plazo.includes("-")
+                  ? formatearFechaVisual(nuevaSubtarea.plazo)
+                  : nuevaSubtarea.plazo
+              }
+              onChange={manejarCambioSubtarea}
+              placeholder="dd/mm/aaaa"
+              maxLength={10}
+              inputMode="numeric"
+              aria-invalid={!!errorSubtarea}
+            />
               <span className="texto-ayuda-campo">Debe ser hoy o una fecha futura.</span>
             </div>
 

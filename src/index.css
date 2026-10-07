@@ -490,10 +490,10 @@ p {
   right: 0;
   top: calc(100% + 0.6rem);
   width: 272px;
-  background: #fff;
+  background: var(--tinta-2);
   border-radius: 16px;
-  box-shadow: var(--sombra-2);
-  border: 1px solid var(--borde);
+  box-shadow: 0 18px 45px -14px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   padding: 0.4rem;
   animation: aparecer 0.16s ease;
   z-index: 60;
@@ -504,14 +504,14 @@ p {
   gap: 0.7rem;
   align-items: center;
   padding: 0.75rem 0.7rem 0.85rem;
-  border-bottom: 1px solid var(--borde);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   margin-bottom: 0.35rem;
 }
 
 .usuario-menu-nombre {
   font-weight: 800;
   font-size: 0.92rem;
-  color: var(--tinta);
+  color: #fff;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -519,7 +519,7 @@ p {
 
 .usuario-menu-correo {
   font-size: 0.78rem;
-  color: var(--texto-suave);
+  color: rgba(255, 255, 255, 0.62);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -532,8 +532,8 @@ p {
   margin-top: 0.3rem;
   font-size: 0.7rem;
   font-weight: 700;
-  color: var(--violeta-fuerte);
-  background: var(--violeta-suave);
+  color: var(--lima);
+  background: rgba(215, 242, 94, 0.12);
   border-radius: 999px;
   padding: 0.12rem 0.5rem;
 }
@@ -549,7 +549,7 @@ p {
   font-family: inherit;
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--texto);
+  color: rgba(255, 255, 255, 0.82);
   padding: 0.6rem 0.7rem;
   border-radius: 10px;
   cursor: pointer;
@@ -557,34 +557,34 @@ p {
 }
 
 .usuario-menu-item:hover {
-  background: var(--violeta-suave);
-  color: var(--violeta-fuerte);
+  background: rgba(109, 77, 246, 0.22);
+  color: #fff;
 }
 
 .usuario-menu-item svg {
-  color: var(--texto-suave);
+  color: rgba(255, 255, 255, 0.58);
 }
 
 .usuario-menu-item:hover svg {
-  color: var(--violeta-fuerte);
+  color: var(--lima);
 }
 
 .usuario-menu-item.peligro {
-  color: var(--rojo-texto);
+  color: #ff8b8f;
 }
 
 .usuario-menu-item.peligro svg {
-  color: var(--rojo-texto);
+  color: #ff8b8f;
 }
 
 .usuario-menu-item.peligro:hover {
-  background: var(--rojo-suave);
-  color: var(--rojo-texto);
+  background: rgba(229, 72, 77, 0.16);
+  color: #ff9da0;
 }
 
 .usuario-menu-separador {
   height: 1px;
-  background: var(--borde);
+  background: rgba(255, 255, 255, 0.12);
   margin: 0.35rem 0.4rem;
 }
 
@@ -1061,8 +1061,10 @@ p {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.22rem;
+  gap: .22rem;
   min-width: 0;
+  text-decoration: none;
+  color: inherit;
 }
 
 .gestion-card-titulo {
