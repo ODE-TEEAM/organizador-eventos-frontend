@@ -33,7 +33,7 @@ export default function Login() {
     const nuevos = {};
     if (!email.trim()) {
       nuevos.email = "Escribe tu correo para poder entrar.";
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    } else if (!/^[a-z0-9._%+-]+@gmail\.com$/.test(email)) {
       nuevos.email = "Ese correo no parece completo. Revísalo e intenta de nuevo.";
     }
     if (!password) {
@@ -111,7 +111,7 @@ export default function Login() {
               placeholder="ejemplo@correo.com"
               value={email}
               onChange={(e) => {
-                setEmail(e.target.value);
+                setEmail(e.target.value.toLowerCase());
                 if (errores.email) setErrores({ ...errores, email: undefined });
               }}
               aria-invalid={!!errores.email}

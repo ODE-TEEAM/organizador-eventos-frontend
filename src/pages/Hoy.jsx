@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Header from "../components/Header";
 import AvatarAnimal from "../components/AvatarAnimal";
 import { getAuthHeaders, obtenerNombre, obtenerUsuario } from "../auth";
+import { hoyLocalISO, dentroDeAniosInput, mensajeDeError } from "../utils/validacion";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
@@ -33,32 +34,6 @@ function formatearFechaCorta(valor) {
   return fecha.toLocaleDateString("es-CO", { day: "numeric", month: "short" });
 }
 
-function formatearFechaInput(valor) {
-  if (!valor) return "";
-
-  const partes = valor.split("-");
-
-  if (partes.length !== 3) return valor;
-
-  const [anio, mes, dia] = partes;
-
-  return `${dia}/${mes}/${anio}`;
-}
-
-function convertirFechaInputAISO(valor) {
-  const limpio = valor.replace(/\D/g, "").slice(0, 8);
-
-  let resultado = limpio;
-
-  if (limpio.length > 4) {
-    resultado = `${limpio.slice(0, 2)}/${limpio.slice(2, 4)}/${limpio.slice(4)}`;
-  } else if (limpio.length > 2) {
-    resultado = `${limpio.slice(0, 2)}/${limpio.slice(2)}`;
-  }
-
-  return resultado;
-}
-
 function fechaLargaHoy() {
   return new Date().toLocaleDateString("es-CO", {
     weekday: "long",
@@ -75,7 +50,6 @@ export default function Hoy() {
   const [mensajeError, setMensajeError] = useState("");
   const [gestionEditando, setGestionEditando] = useState(null);
   const [nuevaFecha, setNuevaFecha] = useState("");
-  const [textoNuevaFecha, setTextoNuevaFecha] = useState("");
   const [guardandoReprogramacion, setGuardandoReprogramacion] = useState(false);
   const [mensajeReprogramacion, setMensajeReprogramacion] = useState("");
   const [fechaSugerida, setFechaSugerida] = useState("");
@@ -148,7 +122,6 @@ export default function Hoy() {
 const abrirReprogramacion = (gestion) => {
   setGestionEditando(gestion);
   setNuevaFecha(gestion.fecha || "");
-  setTextoNuevaFecha(formatearFechaInput(gestion.fecha || ""));
   setMensajeReprogramacion("");
   setFechaSugerida("");
 };
@@ -158,7 +131,6 @@ const cerrarReprogramacion = () => {
 
   setGestionEditando(null);
   setNuevaFecha("");
-  setTextoNuevaFecha("");
   setMensajeReprogramacion("");
   setFechaSugerida("");
 };
@@ -190,7 +162,8 @@ const guardarReprogramacion = async (e) => {
 
  if (respuesta.status === 409 && datos?.conflicto) {
   setMensajeReprogramacion(
-    `Quedarías con ${datos.horas_planificadas} horas planificadas (límite ${datos.limite_horas} horas).`
+    datos.mensaje ||
+      `Quedarías con ${datos.horas_planificadas} horas planificadas (límite ${datos.limite_horas} horas).`
   );
   setFechaSugerida(datos.fecha_sugerida || "");
   setGuardandoReprogramacion(false);
@@ -199,10 +172,7 @@ const guardarReprogramacion = async (e) => {
 
 if (!respuesta.ok) {
   setMensajeReprogramacion(
-    datos?.plazo?.[0] ||
-      datos?.detail ||
-      datos?.error ||
-      "No pudimos reprogramar la gestión."
+    mensajeDeError(datos, "No pudimos reprogramar la gestión.")
   );
   setGuardandoReprogramacion(false);
   return;
@@ -230,8 +200,6 @@ const aceptarFechaSugerida = async () => {
   setMensajeReprogramacion("");
 
   try {
-    console.log("Fecha que C4 va a guardar:", fechaSugerida);
-
     const respuesta = await fetch(
       `${API_URL}/subtareas/${gestionEditando.id}/`,
       {
@@ -245,14 +213,9 @@ const aceptarFechaSugerida = async () => {
 
     const datos = await respuesta.json();
 
-    console.log("C4 respuesta:", respuesta.status, datos);
-
     if (!respuesta.ok) {
       setMensajeReprogramacion(
-        datos?.plazo?.[0] ||
-          datos?.detail ||
-          datos?.error ||
-          "No pudimos mover la gestión a la fecha sugerida."
+        mensajeDeError(datos, "No pudimos mover la gestión a la fecha sugerida.")
       );
       setGuardandoReprogramacion(false);
       return;
@@ -481,56 +444,26 @@ const aceptarFechaSugerida = async () => {
             <div className="campo">
               <label htmlFor="nueva-fecha">Nueva fecha</label>
             <input
-            id="nueva-fecha"
-            type="text"
-            value={textoNuevaFecha}
-            placeholder="dd/mm/aaaa"
-            maxLength={10}
-            inputMode="numeric"
-            autoComplete="off"
-            onChange={(e) => {
-            let digitos = e.target.value.replace(/\D/g, "");
-
-            // Máximo: 8 dígitos (ddmmaaaa)
-            digitos = digitos.slice(0, 8);
-
-            // Formato automático dd/mm/aaaa
-            let formateado = digitos;
-
-            if (digitos.length > 4) {
-              formateado =
-                `${digitos.slice(0, 2)}/` +
-                `${digitos.slice(2, 4)}/` +
-                digitos.slice(4, 8);
-            } else if (digitos.length > 2) {
-              formateado =
-                `${digitos.slice(0, 2)}/` +
-                digitos.slice(2, 4);
-            }
-
-            setTextoNuevaFecha(formateado);
-            setMensajeReprogramacion("");
-
-            // Convertir a ISO únicamente cuando esté completa
-            if (digitos.length === 8) {
-              const dia = digitos.slice(0, 2);
-              const mes = digitos.slice(2, 4);
-              const anio = digitos.slice(4, 8);
-
-              setNuevaFecha(`${anio}-${mes}-${dia}`);
-            } else {
-              setNuevaFecha("");
-            }
-          }}
-            disabled={guardandoReprogramacion}
-          />
-            </div>
-
+              id="nueva-fecha"
+              type="date"
+              value={nuevaFecha}
+              min={hoyLocalISO()}
+              max={dentroDeAniosInput(10).slice(0, 10)}
+              onChange={(e) => {
+                setNuevaFecha(e.target.value);
+                setMensajeReprogramacion("");
+                setFechaSugerida("");
+              }}
+              disabled={guardandoReprogramacion}
+              aria-invalid={!!mensajeReprogramacion}
+            />
+            <span className="texto-ayuda-campo">
+              Elige una fecha de hoy en adelante, dentro de los próximos 10 años.
+            </span>
             {mensajeReprogramacion && (
-  <p className="alerta alerta-error">
-    {mensajeReprogramacion}
-  </p>
-)}
+              <span className="error-campo">{mensajeReprogramacion}</span>
+            )}
+            </div>
 
 {fechaSugerida && (
   <div

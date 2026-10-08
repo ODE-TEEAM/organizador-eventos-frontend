@@ -28,9 +28,15 @@ export default function Registro() {
   const [exito, setExito] = useState(false);
 
   const manejarCambio = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const valor =
+      e.target.name === "email"
+        ? e.target.value.toLowerCase()
+        : e.target.value;
+
+    setForm({ ...form, [e.target.name]: valor });
+
     if (errores[e.target.name]) {
-      setErrores({ ...errores, [e.target.name]: undefined });
+    setErrores({ ...errores, [e.target.name]: undefined });
     }
   };
 
@@ -43,8 +49,8 @@ export default function Registro() {
     }
     if (!form.email.trim()) {
       nuevos.email = "Necesitamos tu correo para crear la cuenta.";
-    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
-      nuevos.email = "Ese correo no parece completo. Revísalo e intenta de nuevo.";
+    } else if (!/^[a-z0-9._%+-]+@gmail\.com$/.test(form.email)) {
+      nuevos.email = "Debes ingresar un correo Gmail válido, por ejemplo: ejemplo@gmail.com";
     }
     if (!form.password) {
       nuevos.password = "Crea una contraseña para proteger tu cuenta.";

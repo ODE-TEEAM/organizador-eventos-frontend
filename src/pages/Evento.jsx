@@ -2,6 +2,15 @@ import { useEffect, useState } from "react";
 import { useParams, useLocation, Link } from "react-router-dom";
 import Header from "../components/Header";
 import { getAuthHeaders } from "../auth";
+import {
+  ANIO_MAXIMO,
+  ahoraLocalInput,
+  dentroDeAniosInput,
+  esAnioRazonable,
+  enfocarPrimerError,
+  normalizarErroresBackend,
+  resumenErrores,
+} from "../utils/validacion";
 import "./formularios.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
@@ -18,9 +27,18 @@ const ESTADO_LABEL = {
 const LONGITUD_MINIMA_TEXTO = 3;
 const CONTIENE_LETRA = /[a-zA-ZÀ-ÿ]/;
 
+
 function esTextoValido(valor) {
   const limpio = (valor || "").trim();
   return limpio.length >= LONGITUD_MINIMA_TEXTO && CONTIENE_LETRA.test(limpio);
+}
+
+function esFechaFutura(valor) {
+  if (!valor) return false;
+  const texto = String(valor);
+  const fecha =
+    texto.length > 10 ? new Date(texto) : new Date(`${texto}T23:59:59`);
+  return !isNaN(fecha.getTime()) && fecha.getTime() > Date.now();
 }
 
 function formatearFecha(valor) {
@@ -76,6 +94,7 @@ function IconoLapiz() {
     </svg>
   );
 }
+
 
 function Evento() {
   const { id } = useParams();
@@ -165,12 +184,20 @@ function Evento() {
     }
     if (!form.fecha_hora) {
       errores.fecha_hora = "La fecha y hora del evento son obligatorias.";
+    } else if (!esAnioRazonable(form.fecha_hora)) {
+      errores.fecha_hora = `El año del evento no puede ser mayor a ${ANIO_MAXIMO}.`;
+    } else if (!esFechaFutura(form.fecha_hora)) {
+      errores.fecha_hora = "La fecha y hora del evento deben ser futuras.";
     }
     if (!esTextoValido(form.lugar)) {
       errores.lugar = "Escribe un lugar válido (mínimo 3 caracteres, con letras).";
     }
     if (!form.plazo_limite) {
       errores.plazo_limite = "El plazo límite es obligatorio.";
+    } else if (!esAnioRazonable(form.plazo_limite)) {
+      errores.plazo_limite = `El año del plazo límite no puede ser mayor a ${ANIO_MAXIMO}.`;
+    } else if (!esFechaFutura(form.plazo_limite)) {
+      errores.plazo_limite = "El plazo límite debe ser hoy o una fecha futura.";
     } else if (
       form.fecha_hora &&
       form.plazo_limite > form.fecha_hora.slice(0, 10)
@@ -186,7 +213,10 @@ function Evento() {
 
     const errores = validarEdicion();
     setErroresEdit(errores);
-    if (Object.keys(errores).length > 0) return;
+    if (Object.keys(errores).length > 0) {
+      enfocarPrimerError(".pagina-formulario");
+      return;
+    }
 
     setGuardando(true);
     try {
@@ -204,10 +234,15 @@ function Evento() {
       const datos = await respuesta.json();
 
       if (!respuesta.ok) {
-        if (datos && typeof datos === "object") {
-          setErroresEdit(datos);
-        }
+        // El backend devuelve errores por campo ({"campo": ["mensaje"]});
+        // los convertimos en texto legible, junto a cada campo y en el resumen.
+        const normalizados = normalizarErroresBackend(datos);
+        setErroresEdit({
+          ...normalizados.campos,
+          general: normalizados.general || resumenErrores(normalizados) || undefined,
+        });
         setGuardando(false);
+        enfocarPrimerError(".pagina-formulario");
         return;
       }
 
@@ -225,7 +260,7 @@ function Evento() {
 
   if (error) {
     return (
-      <div className="pagina">
+      <div className="pagina pagina-oscura">
         <Header />
         <main className="contenedor contenedor-estrecho pagina-formulario">
           <p className="alerta alerta-error">
@@ -241,7 +276,7 @@ function Evento() {
 
   if (!evento) {
     return (
-      <div className="pagina">
+      <div className="pagina pagina-oscura">
         <Header />
         <main className="contenedor contenedor-estrecho pagina-formulario">
           <p className="alerta alerta-carga">
@@ -253,7 +288,7 @@ function Evento() {
   }
 
   return (
-    <div className="pagina">
+    <div className="pagina pagina-oscura">
       <Header />
 
       <main className="contenedor contenedor-estrecho pagina-formulario">
@@ -287,6 +322,12 @@ function Evento() {
               <p className="texto-ayuda" style={{ marginBottom: "1.1rem" }}>
                 Corrige lo que necesites y guarda los cambios. Todo es editable.
               </p>
+
+              {erroresEdit.general && (
+                <p className="alerta alerta-error" role="alert">
+                  <IconoError /> {erroresEdit.general}
+                </p>
+              )}
 
               <div className="editar-grid">
                 <div className="campo campo-full">
@@ -345,6 +386,8 @@ function Evento() {
                     name="fecha_hora"
                     value={form.fecha_hora}
                     onChange={manejarCambioEdit}
+                    min={ahoraLocalInput()}
+                    max={dentroDeAniosInput(10)}
                     aria-invalid={!!erroresEdit.fecha_hora}
                     disabled={guardando}
                   />
@@ -361,6 +404,8 @@ function Evento() {
                     name="plazo_limite"
                     value={form.plazo_limite}
                     onChange={manejarCambioEdit}
+                    min={new Date().toISOString().slice(0, 10)}
+                    max={form.fecha_hora ? form.fecha_hora.slice(0, 10) : undefined}
                     aria-invalid={!!erroresEdit.plazo_limite}
                     disabled={guardando}
                   />
@@ -385,10 +430,6 @@ function Evento() {
                   )}
                 </div>
               </div>
-
-              {erroresEdit.general && (
-                <p className="alerta alerta-error"><IconoError /> {erroresEdit.general}</p>
-              )}
 
               <div className="evento-acciones">
                 <button type="submit" className="boton-principal" disabled={guardando}>

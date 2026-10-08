@@ -2,6 +2,17 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { getAuthHeaders } from "../auth";
+import {
+  ANIO_MAXIMO,
+  HORAS_MIN,
+  HORAS_MAX,
+  ahoraLocalInput,
+  dentroDeAniosInput,
+  esAnioRazonable,
+  mensajeDeError,
+  enfocarPrimerError,
+  normalizarErroresBackend,
+} from "../utils/validacion";
 import "./formularios.css";
 
 // Usa la variable de entorno que ya está en .env.example; si no existe,
@@ -11,19 +22,12 @@ const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 // ---- Reglas de validación reutilizables ----
 const LONGITUD_MINIMA_TEXTO = 3;
 const CONTIENE_LETRA = /[a-zA-ZÀ-ÿ]/;
-const HORAS_MIN = 1;
-const HORAS_MAX = 12;
 
 // Un texto "válido" (nombre, cliente, lugar, tipo): sin espacios sobrantes,
 // con un mínimo de caracteres y con al menos una letra (bloquea "a", "12", " ").
 function esTextoValido(valor) {
   const limpio = (valor || "").trim();
   return limpio.length >= LONGITUD_MINIMA_TEXTO && CONTIENE_LETRA.test(limpio);
-}
-
-// YYYY-MM-DD de hoy, para el atributo min de los <input type="date">.
-function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function formatearFechaVisual(fechaISO) {
@@ -66,16 +70,14 @@ function convertirFechaAISO(valor) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// ¿La fecha (sin hora) ingresada es hoy o en el futuro?
-// Acepta tanto "YYYY-MM-DD" como "YYYY-MM-DDTHH:mm" (toma solo la parte de fecha).
+// ¿La fecha/hora es futura? Acepta "YYYY-MM-DD" (todo el día de hoy cuenta
+// como válido) o "YYYY-MM-DDTHH:mm" (comparación exacta contra este instante).
 function esFechaFutura(valor) {
   if (!valor) return false;
-  const soloFecha = String(valor).slice(0, 10);
-  const fecha = new Date(`${soloFecha}T00:00:00`);
-  if (isNaN(fecha.getTime())) return false;
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  return fecha.getTime() >= hoy.getTime();
+  const texto = String(valor);
+  const fecha =
+    texto.length > 10 ? new Date(texto) : new Date(`${texto}T23:59:59`);
+  return !isNaN(fecha.getTime()) && fecha.getTime() > Date.now();
 }
 
 // ---- Iconos inline (sin dependencias externas) ----
@@ -227,8 +229,10 @@ function Crear() {
     }
     if (!formulario.fecha_hora) {
       errores.fecha_hora = "La fecha y hora del evento son obligatorias.";
+    } else if (!esAnioRazonable(formulario.fecha_hora)) {
+      errores.fecha_hora = `El año del evento no puede ser mayor a ${ANIO_MAXIMO}.`;
     } else if (!esFechaFutura(formulario.fecha_hora)) {
-      errores.fecha_hora = "La fecha del evento debe ser hoy o una fecha futura.";
+      errores.fecha_hora = "La fecha y hora del evento deben ser futuras (no puedes agendar en el pasado).";
     }
     if (!esTextoValido(formulario.lugar)) {
       errores.lugar = "Escribe un lugar válido (ej. nombre del salón, dirección o ciudad), mínimo 3 caracteres.";
@@ -245,6 +249,9 @@ function Crear() {
       if (!plazoISO) {
         errores.plazo_limite =
           "Escribe una fecha válida en formato dd/mm/aaaa.";
+      } else if (!esAnioRazonable(plazoISO)) {
+        errores.plazo_limite =
+          `El año del plazo límite no puede ser mayor a ${ANIO_MAXIMO}.`;
       } else if (!esFechaFutura(plazoISO)) {
         errores.plazo_limite =
           "El plazo límite debe ser hoy o una fecha futura.";
@@ -342,7 +349,7 @@ function Crear() {
 
     if (!respuesta.ok) {
       throw new Error(
-        `No se pudo guardar la gestión "${subtarea.nombre}": ${JSON.stringify(datos)}`
+        mensajeDeError(datos, `No se pudo guardar la gestión "${subtarea.nombre}":`)
       );
     }
 
@@ -359,6 +366,7 @@ function Crear() {
     if (Object.keys(errores).length > 0) {
       setEstadoEnvio("error");
       setMensajeError("Revisa los campos marcados en rojo antes de continuar.");
+      enfocarPrimerError(".pagina-formulario");
       return;
     }
 
@@ -380,18 +388,20 @@ function Crear() {
       const datos = await respuesta.json();
 
       if (!respuesta.ok) {
-        console.log(datos);
         // El backend devuelve errores por campo (ej. {"nombre": ["..."]});
-        // los mostramos junto a cada input, igual que los del cliente.
-        if (datos && typeof datos === "object") {
-          setErroresFormulario(datos);
-        }
+        // los traducimos a mensajes legibles y los mostramos junto a cada input.
+        const normalizados = normalizarErroresBackend(datos);
+        setErroresFormulario(normalizados.campos);
         setEstadoEnvio("error");
-        setMensajeError("No se pudo crear el evento. Revisa los campos señalados.");
+        setMensajeError(
+          normalizados.general ||
+            mensajeDeError(datos) ||
+            "No se pudo crear el evento. Revisa los campos señalados."
+        );
+        enfocarPrimerError(".pagina-formulario");
         return;
       }
 
-      console.log("Evento creado:", datos);
       const eventoId = datos.id;
 
       // 2) Crear cada subtarea logística asociada a ese evento
@@ -433,6 +443,15 @@ function Crear() {
           Completa estos dos pasos y te llevaremos directo a la página del evento,
           donde verás todo lo que acabas de registrar.
         </p>
+
+        {/* El resumen de errores va arriba del todo: cerca del título y de los
+            campos, no abajo junto al botón. Cada error también se repite junto
+            a su campo en rojo. */}
+        {estadoEnvio === "error" && mensajeError && (
+          <p className="alerta alerta-error" role="alert">
+            <IconoError /> {mensajeError}
+          </p>
+        )}
 
         <form onSubmit={crearEvento} noValidate>
           <div className="paso-encabezado">
@@ -504,15 +523,18 @@ function Crear() {
                 name="fecha_hora"
                 value={formulario.fecha_hora}
                 onChange={manejarCambio}
-                min={`${hoyISO()}T00:00`}
+                min={ahoraLocalInput()}
+                max={dentroDeAniosInput(10)}
                 aria-invalid={!!erroresFormulario.fecha_hora}
               />
-              <span className="texto-ayuda-campo">
-                La hora inicia en 00:00; ajústala a la hora real de tu evento. Debe ser hoy o una fecha futura.
-              </span>
-              {erroresFormulario.fecha_hora && (
+              {erroresFormulario.fecha_hora ? (
                 <span className="error-campo">
                   <IconoError /> {erroresFormulario.fecha_hora}
+                </span>
+              ) : (
+                <span className="texto-ayuda-campo">
+                  Elige la fecha y la hora reales del evento. Deben ser futuras: no puedes
+                  agendar un evento en una hora que ya pasó.
                 </span>
               )}
             </div>
@@ -528,12 +550,13 @@ function Crear() {
                 placeholder="Salón, dirección o ciudad"
                 aria-invalid={!!erroresFormulario.lugar}
               />
-              <span className="texto-ayuda-campo">
-                Mínimo 3 caracteres, con letras (ej. "Salón Los Almendros", no "pan").
-              </span>
-              {erroresFormulario.lugar && (
+              {erroresFormulario.lugar ? (
                 <span className="error-campo">
                   <IconoError /> {erroresFormulario.lugar}
+                </span>
+              ) : (
+                <span className="texto-ayuda-campo">
+                  Mínimo 3 caracteres, con letras (ej. "Salón Los Almendros", no "pan").
                 </span>
               )}
             </div>
@@ -555,13 +578,14 @@ function Crear() {
                 inputMode="numeric"
                 aria-invalid={!!erroresFormulario.plazo_limite}
               />
-              <span className="texto-ayuda-campo">
-                Fecha máxima para tener todo listo antes del evento. Debe ser hoy o futura.
-              </span>
-              {erroresFormulario.plazo_limite && (
+              {erroresFormulario.plazo_limite ? (
                 <span className="error-campo">
                   <IconoError /> {erroresFormulario.plazo_limite}
                 </span>
+              ) : (
+              <span className="texto-ayuda-campo">
+                Fecha máxima para tener todo listo antes del evento. Debe ser hoy o futura.
+              </span>
               )}
             </div>
           </div>
@@ -633,12 +657,13 @@ function Crear() {
                 inputMode="numeric"
                 aria-invalid={!!errorPlazoSubtarea}
               />
-              <span className="texto-ayuda-campo">
-                Debe ser hoy o una fecha futura (dd/mm/aaaa).
-              </span>
-              {errorPlazoSubtarea && (
+              {errorPlazoSubtarea ?(
                 <span className="error-campo">
                   <IconoError /> {errorPlazoSubtarea}
+                </span>
+              ) : (
+                <span className="texto-ayuda-campo">
+                  Debe ser hoy o una fecha futura (dd/mm/aaaa).
                 </span>
               )}
             </div>
@@ -656,13 +681,14 @@ function Crear() {
                 maxLength={2}
                 aria-invalid={!!errorHorasSubtarea}
               />
-              <span className="texto-ayuda-campo">
-                Número entero entre 1 y 12 (sin decimales).
-              </span>
-              {errorHorasSubtarea && (
+              {errorHorasSubtarea ? (
                 <span className="error-campo">
                   <IconoError /> {errorHorasSubtarea}
                 </span>
+              ) : (
+                <span className="texto-ayuda-campo">
+                  Número entero entre 1 y 12 (sin decimales).
+              </span>
               )}
             </div>
 
@@ -686,11 +712,6 @@ function Crear() {
           {estadoEnvio === "exito" && (
             <p className="alerta alerta-exito">
               <IconoExito /> Evento creado correctamente. Redirigiendo al detalle...
-            </p>
-          )}
-          {estadoEnvio === "error" && mensajeError && (
-            <p className="alerta alerta-error">
-              <IconoError /> {mensajeError}
             </p>
           )}
 

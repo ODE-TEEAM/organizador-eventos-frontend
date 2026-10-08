@@ -1181,6 +1181,11 @@ p {
   color: #fff;
 }
 
+/* Los h1 dentro de tarjetas blancas deben seguir oscuros */
+.pagina-oscura .tarjeta h1 {
+  color: var(--tinta);
+}
+
 .pagina-oscura .subtitulo,
 .pagina-oscura .texto-ayuda,
 .pagina-oscura .cabecera-pagina p,
