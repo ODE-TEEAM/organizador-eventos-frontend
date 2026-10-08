@@ -11,6 +11,8 @@ const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 // ---- Reglas de validación reutilizables ----
 const LONGITUD_MINIMA_TEXTO = 3;
 const CONTIENE_LETRA = /[a-zA-ZÀ-ÿ]/;
+const HORAS_MIN = 1;
+const HORAS_MAX = 12;
 
 // Un texto "válido" (nombre, cliente, lugar, tipo): sin espacios sobrantes,
 // con un mínimo de caracteres y con al menos una letra (bloquea "a", "12", " ").
@@ -28,6 +30,7 @@ function formatearFechaVisual(fechaISO) {
   if (!fechaISO) return "";
 
   const [yyyy, mm, dd] = fechaISO.split("-");
+  if (!yyyy || !mm || !dd) return fechaISO;
   return `${dd}/${mm}/${yyyy}`;
 }
 
@@ -116,7 +119,8 @@ function Crear() {
     plazo: "",
     horas_estimadas: "",
   });
-  const [errorSubtarea, setErrorSubtarea] = useState("");
+  const [errorNombreSubtarea, setErrorNombreSubtarea] = useState("");
+  const [errorPlazoSubtarea, setErrorPlazoSubtarea] = useState("");
   const [errorHorasSubtarea, setErrorHorasSubtarea] = useState("");
 
   // Estado UX explícito del envío del formulario completo:
@@ -128,73 +132,83 @@ function Crear() {
     estadoEnvio === "guardando-evento" || estadoEnvio === "guardando-subtareas";
 
   const manejarCambio = (e) => {
-  const { name, value } = e.target;
+    const { name, value } = e.target;
 
-  if (name === "plazo_limite") {
-    // Solo permite números y máximo 8 dígitos: ddmmaaaa.
-    const digitos = value.replace(/\D/g, "").slice(0, 8);
+    if (name === "plazo_limite") {
+      // Solo permite números y máximo 8 dígitos: ddmmaaaa.
+      const digitos = value.replace(/\D/g, "").slice(0, 8);
 
-    let fechaVisual = digitos;
+      let fechaVisual = digitos;
 
-    if (digitos.length > 2) {
-      fechaVisual = `${digitos.slice(0, 2)}/${digitos.slice(2)}`;
+      if (digitos.length > 2) {
+        fechaVisual = `${digitos.slice(0, 2)}/${digitos.slice(2)}`;
+      }
+
+      if (digitos.length > 4) {
+        fechaVisual = `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`;
+      }
+
+      const fechaISO = convertirFechaAISO(fechaVisual);
+
+      setFormulario({
+        ...formulario,
+        plazo_limite: fechaISO || fechaVisual,
+      });
+    } else {
+      setFormulario({
+        ...formulario,
+        [name]: value,
+      });
     }
 
-    if (digitos.length > 4) {
-      fechaVisual = `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`;
+    // Si el usuario ya corrigió el campo, le quitamos el error apenas escribe.
+    if (erroresFormulario[name]) {
+      setErroresFormulario({
+        ...erroresFormulario,
+        [name]: undefined,
+      });
     }
+  };
 
-    const fechaISO = convertirFechaAISO(fechaVisual);
+  const manejarCambioSubtarea = (e) => {
+    const { name, value } = e.target;
 
-    setFormulario({
-      ...formulario,
-      plazo_limite: fechaISO || fechaVisual,
-    });
-  } else {
-    setFormulario({
-      ...formulario,
-      [name]: value,
-    });
-  }
+    if (name === "plazo") {
+      const digitos = value.replace(/\D/g, "").slice(0, 8);
 
-  // Si el usuario ya corrigió el campo, le quitamos el error apenas escribe.
-  if (erroresFormulario[name]) {
-    setErroresFormulario({
-      ...erroresFormulario,
-      [name]: undefined,
-    });
-  }
-};
+      let fechaVisual = digitos;
 
- const manejarCambioSubtarea = (e) => {
-  const { name, value } = e.target;
+      if (digitos.length > 2) {
+        fechaVisual = `${digitos.slice(0, 2)}/${digitos.slice(2)}`;
+      }
 
-  if (name === "plazo") {
-    const digitos = value.replace(/\D/g, "").slice(0, 8);
+      if (digitos.length > 4) {
+        fechaVisual = `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`;
+      }
 
-    let fechaVisual = digitos;
+      const fechaISO = convertirFechaAISO(fechaVisual);
 
-    if (digitos.length > 2) {
-      fechaVisual = `${digitos.slice(0, 2)}/${digitos.slice(2)}`;
+      setNuevaSubtarea({
+        ...nuevaSubtarea,
+        plazo: fechaISO || fechaVisual,
+      });
+      setErrorPlazoSubtarea("");
+    } else if (name === "horas_estimadas") {
+      // Solo dígitos enteros, máximo 2 caracteres (1–12)
+      const soloDigitos = value.replace(/\D/g, "").slice(0, 2);
+      setNuevaSubtarea({
+        ...nuevaSubtarea,
+        horas_estimadas: soloDigitos,
+      });
+      setErrorHorasSubtarea("");
+    } else {
+      setNuevaSubtarea({
+        ...nuevaSubtarea,
+        [name]: value,
+      });
+      if (name === "nombre") setErrorNombreSubtarea("");
     }
-
-    if (digitos.length > 4) {
-      fechaVisual = `${digitos.slice(0, 2)}/${digitos.slice(2, 4)}/${digitos.slice(4)}`;
-    }
-
-    const fechaISO = convertirFechaAISO(fechaVisual);
-
-    setNuevaSubtarea({
-      ...nuevaSubtarea,
-      plazo: fechaISO || fechaVisual,
-    });
-  } else {
-    setNuevaSubtarea({
-      ...nuevaSubtarea,
-      [name]: value,
-    });
-  }
-};
+  };
 
   // Validación de campos obligatorios del EVENTO (front-end).
   // El backend valida lo mismo (nombre requerido); esto es solo para dar
@@ -220,71 +234,95 @@ function Crear() {
       errores.lugar = "Escribe un lugar válido (ej. nombre del salón, dirección o ciudad), mínimo 3 caracteres.";
     }
     if (!formulario.plazo_limite) {
-  errores.plazo_limite = "El plazo límite es obligatorio.";
-} else {
-  const plazoISO = convertirFechaAISO(
-    formulario.plazo_limite.includes("-")
-      ? formatearFechaVisual(formulario.plazo_limite)
-      : formulario.plazo_limite
-  );
+      errores.plazo_limite = "El plazo límite es obligatorio.";
+    } else {
+      const plazoISO = convertirFechaAISO(
+        formulario.plazo_limite.includes("-")
+          ? formatearFechaVisual(formulario.plazo_limite)
+          : formulario.plazo_limite
+      );
 
-    if (!plazoISO) {
-      errores.plazo_limite =
-        "Escribe una fecha válida en formato dd/mm/aaaa.";
-    } else if (!esFechaFutura(plazoISO)) {
-      errores.plazo_limite =
-        "El plazo límite debe ser hoy o una fecha futura.";
-    } else if (
-      formulario.fecha_hora &&
-      plazoISO > formulario.fecha_hora.slice(0, 10)
-    ) {
-      errores.plazo_limite =
-        "El plazo límite no puede ser después de la fecha del evento.";
+      if (!plazoISO) {
+        errores.plazo_limite =
+          "Escribe una fecha válida en formato dd/mm/aaaa.";
+      } else if (!esFechaFutura(plazoISO)) {
+        errores.plazo_limite =
+          "El plazo límite debe ser hoy o una fecha futura.";
+      } else if (
+        formulario.fecha_hora &&
+        plazoISO > formulario.fecha_hora.slice(0, 10)
+      ) {
+        errores.plazo_limite =
+          "El plazo límite no puede ser después de la fecha del evento.";
+      }
     }
-  }
 
     return errores;
   };
 
   const agregarSubtarea = () => {
-  setErrorSubtarea("");
-  setErrorHorasSubtarea("");
+    setErrorNombreSubtarea("");
+    setErrorPlazoSubtarea("");
+    setErrorHorasSubtarea("");
+
+    let hayError = false;
 
     if (!esTextoValido(nuevaSubtarea.nombre)) {
-      setErrorSubtarea("Escribe un nombre real para la gestión (mínimo 3 caracteres, con letras).");
-      return;
+      setErrorNombreSubtarea(
+        "Escribe un nombre real para la gestión (mínimo 3 caracteres, con letras)."
+      );
+      hayError = true;
     }
+
+    // Normalizar plazo a ISO si viene en dd/mm/aaaa
+    let plazoISO = nuevaSubtarea.plazo;
+    if (plazoISO && !plazoISO.includes("-")) {
+      plazoISO = convertirFechaAISO(plazoISO);
+    }
+
     if (!nuevaSubtarea.plazo) {
-      setErrorSubtarea("El plazo de la gestión es obligatorio.");
-      return;
-    }
-    if (!esFechaFutura(nuevaSubtarea.plazo)) {
-      setErrorSubtarea("El plazo de la gestión debe ser hoy o una fecha futura.");
-      return;
-    }
-    if (
+      setErrorPlazoSubtarea("El plazo de la gestión es obligatorio.");
+      hayError = true;
+    } else if (!plazoISO || !esFechaFutura(plazoISO)) {
+      setErrorPlazoSubtarea(
+        "Escribe una fecha válida (dd/mm/aaaa), hoy o futura."
+      );
+      hayError = true;
+    } else if (
       formulario.fecha_hora &&
-      nuevaSubtarea.plazo > formulario.fecha_hora.slice(0, 10)
+      plazoISO > formulario.fecha_hora.slice(0, 10)
     ) {
-      setErrorSubtarea("El plazo de la gestión no puede ser después de la fecha del evento.");
-      return;
+      setErrorPlazoSubtarea(
+        "El plazo de la gestión no puede ser después de la fecha del evento."
+      );
+      hayError = true;
     }
-   
-    const horas = parseFloat(nuevaSubtarea.horas_estimadas);
+
+    const horasStr = String(nuevaSubtarea.horas_estimadas || "").trim();
+    const horas = Number(horasStr);
 
     if (
-      !nuevaSubtarea.horas_estimadas ||
-      isNaN(horas) ||
-      horas < 0.5 ||
-      !Number.isInteger(horas * 2)
+      !horasStr ||
+      !Number.isInteger(horas) ||
+      horas < HORAS_MIN ||
+      horas > HORAS_MAX
     ) {
       setErrorHorasSubtarea(
-        "Las horas estimadas deben ser mínimo 0.5 y avanzar en intervalos de 0.5 horas. EJ(1.5, 2, 2.5...)"
+        `Las horas estimadas deben ser un número entero entre ${HORAS_MIN} y ${HORAS_MAX}.`
       );
-      return;
+      hayError = true;
     }
 
-    setSubtareas([...subtareas, nuevaSubtarea]);
+    if (hayError) return;
+
+    setSubtareas([
+      ...subtareas,
+      {
+        nombre: nuevaSubtarea.nombre.trim(),
+        plazo: plazoISO,
+        horas_estimadas: horas,
+      },
+    ]);
     setNuevaSubtarea({ nombre: "", plazo: "", horas_estimadas: "" });
   };
 
@@ -461,14 +499,14 @@ function Crear() {
             <div className="campo">
               <label htmlFor="fecha_hora">Fecha y hora del evento</label>
               <input
-              id="fecha_hora"
-              type="datetime-local"
-              name="fecha_hora"
-              value={formulario.fecha_hora}
-              onChange={manejarCambio}
-              min={`${hoyISO()}T00:00`}
-              aria-invalid={!!erroresFormulario.fecha_hora}
-            />
+                id="fecha_hora"
+                type="datetime-local"
+                name="fecha_hora"
+                value={formulario.fecha_hora}
+                onChange={manejarCambio}
+                min={`${hoyISO()}T00:00`}
+                aria-invalid={!!erroresFormulario.fecha_hora}
+              />
               <span className="texto-ayuda-campo">
                 La hora inicia en 00:00; ajústala a la hora real de tu evento. Debe ser hoy o una fecha futura.
               </span>
@@ -502,19 +540,21 @@ function Crear() {
 
             <div className="campo">
               <label htmlFor="plazo_limite">Plazo límite</label>
-             <input
-              id="plazo_limite"
-              type="text"
-              name="plazo_limite"
-              value={formulario.plazo_limite.includes("-")
-                ? formatearFechaVisual(formulario.plazo_limite)
-                : formulario.plazo_limite}
-              onChange={manejarCambio}
-              placeholder="dd/mm/aaaa"
-              maxLength={10}
-              inputMode="numeric"
-              aria-invalid={!!erroresFormulario.plazo_limite}
-            />
+              <input
+                id="plazo_limite"
+                type="text"
+                name="plazo_limite"
+                value={
+                  formulario.plazo_limite.includes("-")
+                    ? formatearFechaVisual(formulario.plazo_limite)
+                    : formulario.plazo_limite
+                }
+                onChange={manejarCambio}
+                placeholder="dd/mm/aaaa"
+                maxLength={10}
+                inputMode="numeric"
+                aria-invalid={!!erroresFormulario.plazo_limite}
+              />
               <span className="texto-ayuda-campo">
                 Fecha máxima para tener todo listo antes del evento. Debe ser hoy o futura.
               </span>
@@ -547,7 +587,8 @@ function Crear() {
                 {subtareas.map((s, index) => (
                   <li key={index}>
                     <span>
-                      <strong>{s.nombre}</strong> — plazo {s.plazo} — {s.horas_estimadas} h
+                      <strong>{s.nombre}</strong> — plazo{" "}
+                      {formatearFechaVisual(s.plazo)} — {s.horas_estimadas} h
                     </span>
                     <button type="button" onClick={() => quitarSubtarea(index)}>
                       Quitar
@@ -566,48 +607,58 @@ function Crear() {
                 value={nuevaSubtarea.nombre}
                 onChange={manejarCambioSubtarea}
                 placeholder="Ej. Reservar salón"
+                aria-invalid={!!errorNombreSubtarea}
               />
+              {errorNombreSubtarea && (
+                <span className="error-campo">
+                  <IconoError /> {errorNombreSubtarea}
+                </span>
+              )}
             </div>
 
             <div className="campo">
               <label htmlFor="subtarea-plazo">Plazo de la gestión</label>
               <input
-              id="subtarea-plazo"
-              type="text"
-              name="plazo"
-              value={
-                nuevaSubtarea.plazo.includes("-")
-                  ? formatearFechaVisual(nuevaSubtarea.plazo)
-                  : nuevaSubtarea.plazo
-              }
-              onChange={manejarCambioSubtarea}
-              placeholder="dd/mm/aaaa"
-              maxLength={10}
-              inputMode="numeric"
-              aria-invalid={!!errorSubtarea}
-            />
-              <span className="texto-ayuda-campo">Debe ser hoy o una fecha futura.</span>
+                id="subtarea-plazo"
+                type="text"
+                name="plazo"
+                value={
+                  nuevaSubtarea.plazo.includes("-")
+                    ? formatearFechaVisual(nuevaSubtarea.plazo)
+                    : nuevaSubtarea.plazo
+                }
+                onChange={manejarCambioSubtarea}
+                placeholder="dd/mm/aaaa"
+                maxLength={10}
+                inputMode="numeric"
+                aria-invalid={!!errorPlazoSubtarea}
+              />
+              <span className="texto-ayuda-campo">
+                Debe ser hoy o una fecha futura (dd/mm/aaaa).
+              </span>
+              {errorPlazoSubtarea && (
+                <span className="error-campo">
+                  <IconoError /> {errorPlazoSubtarea}
+                </span>
+              )}
             </div>
 
-              <div className="campo">
+            <div className="campo">
               <label htmlFor="subtarea-horas">Horas estimadas</label>
-
               <input
                 id="subtarea-horas"
-                type="number"
-                step="0.5"
-                min="0.5"
+                type="text"
+                inputMode="numeric"
                 name="horas_estimadas"
                 value={nuevaSubtarea.horas_estimadas}
                 onChange={manejarCambioSubtarea}
                 placeholder="Ej. 4"
+                maxLength={2}
                 aria-invalid={!!errorHorasSubtarea}
               />
-
               <span className="texto-ayuda-campo">
-                Debe ser mayor a 0.
+                Número entero entre 1 y 12 (sin decimales).
               </span>
-
               {errorHorasSubtarea && (
                 <span className="error-campo">
                   <IconoError /> {errorHorasSubtarea}
@@ -615,16 +666,9 @@ function Crear() {
               )}
             </div>
 
-
             <button type="button" className="boton-principal" onClick={agregarSubtarea}>
               Agregar gestión a la lista
             </button>
-
-            {errorSubtarea && (
-              <p className="alerta alerta-error">
-                <IconoError /> {errorSubtarea}
-              </p>
-            )}
           </div>
 
           {/* Estados UX visibles: carga, éxito y error */}
