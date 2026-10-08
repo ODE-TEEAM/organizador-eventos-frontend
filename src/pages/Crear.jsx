@@ -117,6 +117,7 @@ function Crear() {
     horas_estimadas: "",
   });
   const [errorSubtarea, setErrorSubtarea] = useState("");
+  const [errorHorasSubtarea, setErrorHorasSubtarea] = useState("");
 
   // Estado UX explícito del envío del formulario completo:
   // idle | guardando-evento | guardando-subtareas | exito | error
@@ -246,7 +247,8 @@ function Crear() {
   };
 
   const agregarSubtarea = () => {
-    setErrorSubtarea("");
+  setErrorSubtarea("");
+  setErrorHorasSubtarea("");
 
     if (!esTextoValido(nuevaSubtarea.nombre)) {
       setErrorSubtarea("Escribe un nombre real para la gestión (mínimo 3 caracteres, con letras).");
@@ -267,9 +269,18 @@ function Crear() {
       setErrorSubtarea("El plazo de la gestión no puede ser después de la fecha del evento.");
       return;
     }
+   
     const horas = parseFloat(nuevaSubtarea.horas_estimadas);
-    if (!nuevaSubtarea.horas_estimadas || isNaN(horas) || horas <= 0) {
-      setErrorSubtarea("Las horas estimadas deben ser mayores a 0.");
+
+    if (
+      !nuevaSubtarea.horas_estimadas ||
+      isNaN(horas) ||
+      horas < 0.5 ||
+      !Number.isInteger(horas * 2)
+    ) {
+      setErrorHorasSubtarea(
+        "Las horas estimadas deben ser mínimo 0.5 y avanzar en intervalos de 0.5 horas. EJ(1.5, 2, 2.5...)"
+      );
       return;
     }
 
@@ -578,8 +589,9 @@ function Crear() {
               <span className="texto-ayuda-campo">Debe ser hoy o una fecha futura.</span>
             </div>
 
-            <div className="campo">
+              <div className="campo">
               <label htmlFor="subtarea-horas">Horas estimadas</label>
+
               <input
                 id="subtarea-horas"
                 type="number"
@@ -589,9 +601,20 @@ function Crear() {
                 value={nuevaSubtarea.horas_estimadas}
                 onChange={manejarCambioSubtarea}
                 placeholder="Ej. 4"
+                aria-invalid={!!errorHorasSubtarea}
               />
-              <span className="texto-ayuda-campo">Debe ser mayor a 0.</span>
+
+              <span className="texto-ayuda-campo">
+                Debe ser mayor a 0.
+              </span>
+
+              {errorHorasSubtarea && (
+                <span className="error-campo">
+                  <IconoError /> {errorHorasSubtarea}
+                </span>
+              )}
             </div>
+
 
             <button type="button" className="boton-principal" onClick={agregarSubtarea}>
               Agregar gestión a la lista

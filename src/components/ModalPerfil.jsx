@@ -7,6 +7,9 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 
 export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
   const [pestana, setPestana] = useState('nombre');
+  const [limiteHoras, setLimiteHoras] = useState(6);
+  const [cargandoLimite, setCargandoLimite] = useState(false);
+  const [guardandoLimite, setGuardandoLimite] = useState(false);
   const [nombre, setNombre] = useState('');
   const [claveActual, setClaveActual] = useState('');
   const [claveNueva, setClaveNueva] = useState('');
@@ -40,12 +43,52 @@ export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
     return () => window.removeEventListener('keydown', tecla);
   }, [abierto, onCerrar]);
 
+
+  useEffect(() => {
+    if (!abierto || pestana !== 'limite') return;
+
+    cargarLimiteHoras();
+  }, [abierto, pestana]);
+
   if (!abierto) return null;
 
   const limpiarError = (campo) => {
     if (errores[campo]) setErrores({ ...errores, [campo]: undefined });
     setExito('');
   };
+
+  
+
+  const cargarLimiteHoras = async () => {
+  setCargandoLimite(true);
+  setErrores({});
+  setExito('');
+
+  try {
+    const respuesta = await fetch(`${API_URL}/configuracion/limite-horas/`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    });
+
+    const datos = await respuesta.json();
+
+    if (!respuesta.ok) {
+      setErrores({
+        general: 'No pudimos cargar tu límite diario. Intenta de nuevo.',
+      });
+      setCargandoLimite(false);
+      return;
+    }
+
+    setLimiteHoras(datos.limite_horas_diarias);
+  } catch {
+    setErrores({
+      general: 'No pudimos conectar con el servidor. Intenta de nuevo en unos segundos.',
+    });
+  }
+
+  setCargandoLimite(false);
+};
 
   const guardarNombre = async (e) => {
     e.preventDefault();
@@ -80,6 +123,59 @@ export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
     }
     setCargando(false);
   };
+
+const guardarLimiteHoras = async (e) => {
+  e.preventDefault();
+  setExito('');
+
+  const valor = Number(limiteHoras);
+
+  if (!Number.isInteger(valor) || valor < 1 || valor > 16) {
+    setErrores({
+      limite: 'El límite diario debe estar entre 1 y 16 horas.',
+    });
+    return;
+  }
+
+  setGuardandoLimite(true);
+
+  try {
+    const respuesta = await fetch(
+      `${API_URL}/configuracion/limite-horas/`,
+      {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          limite_horas_diarias: valor,
+        }),
+      }
+    );
+
+    const datos = await respuesta.json();
+
+    if (!respuesta.ok) {
+      const mensaje = Array.isArray(datos?.limite_horas_diarias)
+        ? datos.limite_horas_diarias[0]
+        : 'No pudimos guardar tu límite diario.';
+
+      setErrores({ limite: mensaje });
+      setGuardandoLimite(false);
+      return;
+    }
+
+    setLimiteHoras(datos.limite_horas_diarias);
+    setExito(
+      `¡Listo! Tu límite diario quedó en ${datos.limite_horas_diarias} horas.`
+    );
+  } catch {
+    setErrores({
+      limite:
+        'No pudimos conectar con el servidor. Intenta de nuevo en unos segundos.',
+    });
+  }
+
+  setGuardandoLimite(false);
+};
 
   const guardarClave = async (e) => {
     e.preventDefault();
@@ -173,6 +269,16 @@ export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
           >
             Cambiar contraseña
           </button>
+          <button
+          className={`pestana ${pestana === 'limite' ? 'pestana-activa' : ''}`}
+          onClick={() => {
+            setPestana('limite');
+            setErrores({});
+            setExito('');
+          }}
+        >
+          Límite diario
+        </button>
         </div>
 
         {pestana === 'nombre' ? (
@@ -203,7 +309,7 @@ export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
               {cargando ? 'Guardando...' : 'Guardar nombre'}
             </button>
           </form>
-        ) : (
+            ) : pestana === 'clave' ? (
           <form onSubmit={guardarClave} noValidate>
             <div className="campo">
               <label htmlFor="perfil-clave-actual">Contraseña actual</label>
@@ -269,8 +375,59 @@ export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
             <button type="submit" className="btn btn-primario btn-ancho" disabled={cargando}>
               {cargando ? 'Guardando...' : 'Actualizar contraseña'}
             </button>
-          </form>
-        )}
+                    </form>
+        ) : (
+    <form className="formulario-limite" onSubmit={guardarLimiteHoras} noValidate>
+    <div className="campo">
+      <label htmlFor="perfil-limite-horas">
+        Límite diario de horas
+      </label>
+
+      <input
+        id="perfil-limite-horas"
+        type="number"
+        min="1"
+        max="16"
+        step="1"
+        value={limiteHoras}
+        onChange={(e) => {
+          setLimiteHoras(e.target.value);
+          setErrores((prev) => ({ ...prev, limite: undefined }));
+          setExito('');
+        }}
+        disabled={cargandoLimite || guardandoLimite}
+      />
+
+      <span className="texto-ayuda-campo">
+        Define entre 1 y 16 horas para planificar tus gestiones diarias.
+      </span>
+
+      {errores.limite && (
+        <span className="error-campo">{errores.limite}</span>
+      )}
+    </div>
+
+    {cargandoLimite && (
+      <p className="texto-ayuda-campo">Cargando configuración...</p>
+    )}
+
+    {errores.general && (
+      <p className="alerta alerta-error">{errores.general}</p>
+    )}
+
+    {exito && pestana === 'limite' && (
+      <p className="alerta alerta-exito">{exito}</p>
+    )}
+
+    <button
+      type="submit"
+      className="btn btn-primario btn-ancho"
+      disabled={cargandoLimite || guardandoLimite}
+    >
+      {guardandoLimite ? 'Guardando...' : 'Guardar límite'}
+    </button>
+  </form>
+)}
       </div>
     </div>
   );

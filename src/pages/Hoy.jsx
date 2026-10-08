@@ -12,6 +12,20 @@ const TIPOS = {
   proxima: { badge: "badge-teal", label: "Próxima", punto: "#2dd4bf" },
 };
 
+function formatearFechaLarga(valor) {
+  if (!valor) return "";
+
+  const fecha = new Date(`${valor}T00:00:00`);
+
+  if (isNaN(fecha.getTime())) return valor;
+
+  return fecha.toLocaleDateString("es-CO", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 function formatearFechaCorta(valor) {
   if (!valor) return "";
   const fecha = new Date(`${valor}T00:00:00`);
@@ -61,8 +75,10 @@ export default function Hoy() {
   const [mensajeError, setMensajeError] = useState("");
   const [gestionEditando, setGestionEditando] = useState(null);
   const [nuevaFecha, setNuevaFecha] = useState("");
+  const [textoNuevaFecha, setTextoNuevaFecha] = useState("");
   const [guardandoReprogramacion, setGuardandoReprogramacion] = useState(false);
   const [mensajeReprogramacion, setMensajeReprogramacion] = useState("");
+  const [fechaSugerida, setFechaSugerida] = useState("");
 
   const nombre = obtenerNombre();
   const email = obtenerUsuario()?.email || obtenerUsuario()?.user?.email || "";
@@ -129,10 +145,12 @@ export default function Hoy() {
   return () => window.removeEventListener("keydown", tecla);
 }, [gestionEditando, guardandoReprogramacion]);
 
-  const abrirReprogramacion = (gestion) => {
+const abrirReprogramacion = (gestion) => {
   setGestionEditando(gestion);
   setNuevaFecha(gestion.fecha || "");
+  setTextoNuevaFecha(formatearFechaInput(gestion.fecha || ""));
   setMensajeReprogramacion("");
+  setFechaSugerida("");
 };
 
 const cerrarReprogramacion = () => {
@@ -140,7 +158,9 @@ const cerrarReprogramacion = () => {
 
   setGestionEditando(null);
   setNuevaFecha("");
+  setTextoNuevaFecha("");
   setMensajeReprogramacion("");
+  setFechaSugerida("");
 };
 
 const guardarReprogramacion = async (e) => {
@@ -168,12 +188,71 @@ const guardarReprogramacion = async (e) => {
 
     const datos = await respuesta.json();
 
+ if (respuesta.status === 409 && datos?.conflicto) {
+  setMensajeReprogramacion(
+    `Quedarías con ${datos.horas_planificadas} horas planificadas (límite ${datos.limite_horas} horas).`
+  );
+  setFechaSugerida(datos.fecha_sugerida || "");
+  setGuardandoReprogramacion(false);
+  return;
+}
+
+if (!respuesta.ok) {
+  setMensajeReprogramacion(
+    datos?.plazo?.[0] ||
+      datos?.detail ||
+      datos?.error ||
+      "No pudimos reprogramar la gestión."
+  );
+  setGuardandoReprogramacion(false);
+  return;
+}
+
+    setGestionEditando(null);
+    setNuevaFecha("");
+    setMensajeReprogramacion("");
+
+    await cargarGestiones();
+  } catch (err) {
+    console.error(err);
+    setMensajeReprogramacion(
+      "No pudimos conectar con el servidor. Intenta nuevamente."
+    );
+  }
+
+  setGuardandoReprogramacion(false);
+};
+
+const aceptarFechaSugerida = async () => {
+  if (!gestionEditando || !fechaSugerida) return;
+
+  setGuardandoReprogramacion(true);
+  setMensajeReprogramacion("");
+
+  try {
+    console.log("Fecha que C4 va a guardar:", fechaSugerida);
+
+    const respuesta = await fetch(
+      `${API_URL}/subtareas/${gestionEditando.id}/`,
+      {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          plazo: fechaSugerida,
+        }),
+      }
+    );
+
+    const datos = await respuesta.json();
+
+    console.log("C4 respuesta:", respuesta.status, datos);
+
     if (!respuesta.ok) {
       setMensajeReprogramacion(
         datos?.plazo?.[0] ||
           datos?.detail ||
           datos?.error ||
-          "No pudimos reprogramar la gestión."
+          "No pudimos mover la gestión a la fecha sugerida."
       );
       setGuardandoReprogramacion(false);
       return;
@@ -182,6 +261,7 @@ const guardarReprogramacion = async (e) => {
     setGestionEditando(null);
     setNuevaFecha("");
     setMensajeReprogramacion("");
+    setFechaSugerida("");
 
     await cargarGestiones();
   } catch (err) {
@@ -400,42 +480,89 @@ const guardarReprogramacion = async (e) => {
           <form onSubmit={guardarReprogramacion} noValidate>
             <div className="campo">
               <label htmlFor="nueva-fecha">Nueva fecha</label>
+            <input
+            id="nueva-fecha"
+            type="text"
+            value={textoNuevaFecha}
+            placeholder="dd/mm/aaaa"
+            maxLength={10}
+            inputMode="numeric"
+            autoComplete="off"
+            onChange={(e) => {
+            let digitos = e.target.value.replace(/\D/g, "");
 
-              <input
-              id="nueva-fecha"
-              type="text"
-              value={formatearFechaInput(nuevaFecha)}
-              placeholder="dd/mm/aaaa"
-              maxLength={10}
-              inputMode="numeric"
-              autoComplete="off"
-              onChange={(e) => {
-                const texto = convertirFechaInputAISO(e.target.value);
-                const digitos = texto.replace(/\D/g, "");
+            // Máximo: 8 dígitos (ddmmaaaa)
+            digitos = digitos.slice(0, 8);
 
-                if (digitos.length === 8) {
-                  const [dia, mes, anio] = [
-                    digitos.slice(0, 2),
-                    digitos.slice(2, 4),
-                    digitos.slice(4, 8),
-                  ];
+            // Formato automático dd/mm/aaaa
+            let formateado = digitos;
 
-                  setNuevaFecha(`${anio}-${mes}-${dia}`);
-                } else {
-                  setNuevaFecha("");
-                }
+            if (digitos.length > 4) {
+              formateado =
+                `${digitos.slice(0, 2)}/` +
+                `${digitos.slice(2, 4)}/` +
+                digitos.slice(4, 8);
+            } else if (digitos.length > 2) {
+              formateado =
+                `${digitos.slice(0, 2)}/` +
+                digitos.slice(2, 4);
+            }
 
-                setMensajeReprogramacion("");
-              }}
-              disabled={guardandoReprogramacion}
-            />
+            setTextoNuevaFecha(formateado);
+            setMensajeReprogramacion("");
+
+            // Convertir a ISO únicamente cuando esté completa
+            if (digitos.length === 8) {
+              const dia = digitos.slice(0, 2);
+              const mes = digitos.slice(2, 4);
+              const anio = digitos.slice(4, 8);
+
+              setNuevaFecha(`${anio}-${mes}-${dia}`);
+            } else {
+              setNuevaFecha("");
+            }
+          }}
+            disabled={guardandoReprogramacion}
+          />
             </div>
 
             {mensajeReprogramacion && (
-              <p className="alerta alerta-error">
-                {mensajeReprogramacion}
-              </p>
-            )}
+  <p className="alerta alerta-error">
+    {mensajeReprogramacion}
+  </p>
+)}
+
+{fechaSugerida && (
+  <div
+    style={{
+      marginTop: "1rem",
+      padding: "1rem",
+      borderRadius: "14px",
+      background: "#f4f8ff",
+      border: "1px solid #d8e5ff",
+    }}
+  >
+    <strong style={{ display: "block", marginBottom: "0.35rem" }}>
+      Tenemos una fecha disponible
+    </strong>
+
+    <p style={{ margin: "0 0 0.9rem" }}>
+      Puedes mover esta gestión al{" "}
+      <strong>{formatearFechaLarga(fechaSugerida)}</strong>.
+    </p>
+
+    <button
+      type="button"
+      className="btn btn-primario btn-ancho"
+      onClick={aceptarFechaSugerida}
+      disabled={guardandoReprogramacion}
+    >
+      {guardandoReprogramacion
+        ? "Moviendo..."
+        : `Mover al ${formatearFechaLarga(fechaSugerida)}`}
+    </button>
+  </div>
+)}
 
             <button
               type="submit"
