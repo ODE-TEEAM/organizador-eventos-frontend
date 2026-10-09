@@ -378,10 +378,16 @@ const guardarLimiteHoras = async (e) => {
                     </form>
         ) : (
     <form className="formulario-limite" onSubmit={guardarLimiteHoras} noValidate>
+    
+
     <div className="campo">
       <label htmlFor="perfil-limite-horas">
         Límite diario de horas
       </label>
+
+      <p className="texto-descripcion-campo">
+        Define tu límite diario de horas
+      </p>
 
       <input
         id="perfil-limite-horas"
@@ -389,6 +395,7 @@ const guardarLimiteHoras = async (e) => {
         min="1"
         max="16"
         step="1"
+        placeholder="Ingresa un valor de 1 a 16 horas"
         value={limiteHoras}
         onChange={(e) => {
           setLimiteHoras(e.target.value);
@@ -399,7 +406,7 @@ const guardarLimiteHoras = async (e) => {
       />
 
       <span className="texto-ayuda-campo">
-        Define entre 1 y 16 horas para planificar tus gestiones diarias.
+        Puedes elegir entre 1 y 16 horas.
       </span>
 
       {errores.limite && (
