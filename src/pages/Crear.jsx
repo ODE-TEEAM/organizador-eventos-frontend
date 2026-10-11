@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
@@ -129,6 +130,7 @@ function Crear() {
   // idle | guardando-evento | guardando-subtareas | exito | error
   const [estadoEnvio, setEstadoEnvio] = useState("idle");
   const [mensajeError, setMensajeError] = useState("");
+  const [solicitudAbrirLimite, setSolicitudAbrirLimite] = useState(0);
 
   const enviando =
     estadoEnvio === "guardando-evento" || estadoEnvio === "guardando-subtareas";
@@ -388,8 +390,15 @@ function Crear() {
       const datos = await respuesta.json();
 
       if (!respuesta.ok) {
-        // El backend devuelve errores por campo (ej. {"nombre": ["..."]});
-        // los traducimos a mensajes legibles y los mostramos junto a cada input.
+        // Si el backend rechaza el evento por superar el límite de horas.
+        if (datos.conflicto && datos.mensaje) {
+          setErroresFormulario({});
+          setEstadoEnvio("error");
+          setMensajeError(datos.mensaje);
+          return;
+        }
+
+        // Manejar otros errores de validación.
         const normalizados = normalizarErroresBackend(datos);
         setErroresFormulario(normalizados.campos);
         setEstadoEnvio("error");
@@ -401,6 +410,7 @@ function Crear() {
         enfocarPrimerError(".pagina-formulario");
         return;
       }
+  
 
       const eventoId = datos.id;
 
@@ -435,7 +445,7 @@ function Crear() {
   return (
     <div className="pagina pagina-oscura">
       {/* Header con logo + menú de usuario */}
-      <Header />
+      <Header solicitudAbrirLimite={solicitudAbrirLimite} />
 
       <main className="contenedor contenedor-estrecho pagina-formulario">
         <h1>Crear evento</h1>
@@ -444,14 +454,7 @@ function Crear() {
           donde verás todo lo que acabas de registrar.
         </p>
 
-        {/* El resumen de errores va arriba del todo: cerca del título y de los
-            campos, no abajo junto al botón. Cada error también se repite junto
-            a su campo en rojo. */}
-        {estadoEnvio === "error" && mensajeError && (
-          <p className="alerta alerta-error" role="alert">
-            <IconoError /> {mensajeError}
-          </p>
-        )}
+        
 
         <form onSubmit={crearEvento} noValidate>
           <div className="paso-encabezado">
@@ -718,6 +721,26 @@ function Crear() {
           <button type="submit" className="boton-ancho" disabled={enviando}>
             {enviando ? "Guardando..." : "Crear evento"}
           </button>
+
+          
+          {estadoEnvio === "error" && mensajeError && (
+            <div className="alerta alerta-error" role="alert">
+              <p>
+                <IconoError /> {mensajeError}
+              </p>
+
+              {mensajeError.includes("límite diario") && (
+                <button
+                  type="button"
+                  className="boton-principal"
+                  onClick={() => setSolicitudAbrirLimite((n) => n + 1)}
+                >
+                  Cambiar límite
+                </button>
+              )}
+            </div>
+          )}
+
         </form>
       </main>
     </div>

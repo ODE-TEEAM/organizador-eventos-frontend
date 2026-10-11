@@ -249,23 +249,22 @@ button[type='submit'],
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  background: linear-gradient(135deg, var(--violeta) 0%, var(--violeta-fuerte) 100%);
-  color: #fff;
-  border: none;
+  background: var(--violeta-suave);
+  color: var(--violeta-fuerte);
+  border: 1.5px solid var(--violeta-borde);
   border-radius: 12px;
-  padding: 0.68rem 1.35rem;
+  padding: 0.6rem 1.1rem;
   font-family: var(--fuente);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 6px 18px -6px rgba(109, 77, 246, 0.55);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
 
 button[type='submit']:hover,
 .boton-principal:hover {
+  background: #e4dcff;
   transform: translateY(-1px);
-  box-shadow: 0 10px 26px -8px rgba(109, 77, 246, 0.7);
 }
 
 button[type='submit']:active,
@@ -495,5 +494,190 @@ hr {
   .gestion-tarjeta {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+.nueva-subtarea-contenedor {
+  width: 100%;
+  margin: 20px 0;
+}
+
+/* Botones de acciones del plan logístico */
+.acciones-subtareas {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  margin: 20px 0;
+}
+
+.boton-accion-subtarea {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.68rem 1.35rem;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    var(--violeta) 0%,
+    var(--violeta-fuerte) 100%
+  );
+  color: #fff;
+  font-family: var(--fuente);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 6px 18px -6px rgba(109, 77, 246, 0.55);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.boton-accion-subtarea:hover {
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px -8px rgba(109, 77, 246, 0.7);
+}
+
+.boton-accion-subtarea:active {
+  transform: scale(0.98);
+}
+
+.boton-accion-subtarea:focus-visible {
+  outline: 3px solid var(--violeta-borde);
+  outline-offset: 3px;
+}
+
+.boton-accion-subtarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Recuadro del formulario */
+.formulario-nueva-subtarea {
+  margin-top: 16px;
+  padding: 22px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+
+.formulario-nueva-subtarea h3 {
+  margin: 0 0 22px;
+  color: #1e293b;
+  font-size: 18px;
+}
+
+/* Campos distribuidos horizontalmente */
+.fila-nueva-subtarea {
+  display: grid;
+  grid-template-columns: 2fr 1.4fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.campo-subtarea {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.campo-subtarea label {
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.campo-subtarea input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.campo-subtarea input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* Botón final alineado a la derecha */
+.acciones-nueva-subtarea {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 22px;
+}
+
+
+/* Separación y alineación de los botones de edición */
+.evento-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* Ambos botones con el mismo diseño violeta */
+.boton-edicion-violeta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.68rem 1.35rem;
+  border: 1px solid var(--violeta);
+  border-radius: 12px;
+  background: var(--violeta);
+  color: #fff;
+  font-family: var(--fuente);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.boton-edicion-violeta:hover {
+  background: var(--violeta-fuerte);
+  border-color: var(--violeta-fuerte);
+  color: #fff;
+}
+
+.boton-edicion-violeta:active {
+  transform: scale(0.98);
+}
+
+.boton-edicion-violeta:focus-visible {
+  outline: 3px solid var(--violeta-borde);
+  outline-offset: 3px;
+}
+
+/* Adaptación para pantallas pequeñas */
+@media (max-width: 700px) {
+  .fila-nueva-subtarea {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .formulario-nueva-subtarea {
+    padding: 16px;
+  }
+
+  .acciones-nueva-subtarea .boton-principal {
+    width: 100%;
   }
 }

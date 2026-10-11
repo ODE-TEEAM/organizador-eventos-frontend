@@ -4,12 +4,19 @@ import { cerrarSesion, obtenerUsuario } from '../auth';
 import AvatarAnimal, { animalDe } from './AvatarAnimal';
 import ModalPerfil from './ModalPerfil';
 
-export default function Header() {
+export default function Header({ onCambiarLimite, solicitudAbrirLimite = 0 }) {
   const navigate = useNavigate();
   const [usuario, setUsuario] = useState(obtenerUsuario());
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [perfilAbierto, setPerfilAbierto] = useState(false);
+  const [pestanaPerfilInicial, setPestanaPerfilInicial] = useState('nombre');
   const menuRef = useRef(null);
+  useEffect(() => {
+  if (solicitudAbrirLimite > 0) {
+    setPestanaPerfilInicial('limite');
+    setPerfilAbierto(true);
+  }
+}, [solicitudAbrirLimite]);
 
   const email = usuario?.email || usuario?.user?.email || '';
   const nombre = usuario?.nombre || usuario?.user?.nombre || 'Organizador';
@@ -51,6 +58,9 @@ export default function Header() {
           <NavLink to="/crear" className={({ isActive }) => (isActive ? 'activo' : '')}>
             Crear evento
           </NavLink>
+           <NavLink to="/eventos" className={({ isActive }) => (isActive ? 'activo' : '')}>
+           Mis eventos
+           </NavLink>
           <NavLink to="/progreso" className={({ isActive }) => (isActive ? 'activo' : '')}>
             Progreso
           </NavLink>
@@ -96,6 +106,7 @@ export default function Header() {
                 role="menuitem"
                 onClick={() => {
                   setMenuAbierto(false);
+                  setPestanaPerfilInicial('nombre');
                   setPerfilAbierto(true);
                 }}
               >
@@ -114,6 +125,20 @@ export default function Header() {
                 </svg>
                 Mi perfil (nombre y contraseña)
               </button>
+
+               {onCambiarLimite && (
+                <button
+                  className="usuario-menu-item"
+                  role="menuitem"
+                  onClick={() => {
+                  setMenuAbierto(false);
+                  setPestanaPerfilInicial('limite');
+                  setPerfilAbierto(true);
+                }}
+                >
+                  Cambiar límite diario
+                </button>
+              )} 
 
               <div className="usuario-menu-separador" />
 
@@ -143,6 +168,7 @@ export default function Header() {
         abierto={perfilAbierto}
         onCerrar={() => setPerfilAbierto(false)}
         onActualizar={(nueva) => setUsuario(nueva)}
+        pestanaInicial={pestanaPerfilInicial}
       />
     </header>
   );

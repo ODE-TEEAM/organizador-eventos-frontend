@@ -5,7 +5,12 @@ import InputPassword from './InputPassword';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 
-export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
+export default function ModalPerfil({
+  abierto,
+  onCerrar,
+  onActualizar,
+  pestanaInicial = 'nombre',
+}) {
   const [pestana, setPestana] = useState('nombre');
   const [limiteHoras, setLimiteHoras] = useState(6);
   const [cargandoLimite, setCargandoLimite] = useState(false);
@@ -21,18 +26,18 @@ export default function ModalPerfil({ abierto, onCerrar, onActualizar }) {
   const usuario = obtenerUsuario();
   const semilla = usuario?.email || usuario?.user?.email || '';
 
-  useEffect(() => {
-    if (abierto) {
-      setPestana('nombre');
-      setNombre(usuario?.nombre || usuario?.user?.nombre || '');
-      setClaveActual('');
-      setClaveNueva('');
-      setClaveConfirmar('');
-      setErrores({});
-      setExito('');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [abierto]);
+useEffect(() => {
+  if (abierto) {
+    setPestana(pestanaInicial);
+    setNombre(usuario?.nombre || usuario?.user?.nombre || '');
+    setClaveActual('');
+    setClaveNueva('');
+    setClaveConfirmar('');
+    setErrores({});
+    setExito('');
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [abierto]);
 
   useEffect(() => {
     if (!abierto) return;

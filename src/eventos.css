@@ -1,0 +1,171 @@
+
+.pagina-oscura:has(.lista-gestiones) {
+  min-height: 100vh;
+  padding-bottom: 2.5rem;
+}
+
+.pagina-oscura:has(.lista-gestiones) > .contenedor {
+  max-width: 1100px;
+}
+
+/* Cabecera de página */
+.pagina-oscura:has(.lista-gestiones) .cabecera-pagina {
+  padding: 2rem 0 1.2rem;
+}
+
+.pagina-oscura:has(.lista-gestiones) .cabecera-pagina h1 {
+  margin: 0;
+  font-size: clamp(1.65rem, 3vw, 2rem);
+  line-height: 1.25;
+}
+
+.pagina-oscura:has(.lista-gestiones) .cabecera-pagina p {
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+}
+
+/* Resumen */
+.pagina-oscura:has(.lista-gestiones) .texto-ayuda {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* Lista vertical de rectángulos */
+.pagina-oscura:has(.lista-gestiones) .lista-gestiones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin: 0;
+}
+
+/* Tarjeta horizontal */
+.pagina-oscura:has(.lista-gestiones) .gestion-tarjeta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1.5rem;
+
+  width: 100%;
+  min-width: 115px;
+  padding: 1.35rem 1.5rem;
+
+  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 14px;
+  box-shadow: 0 5px 16px rgba(15, 7, 38, 0.12);
+
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.pagina-oscura:has(.lista-gestiones) .gestion-tarjeta:hover {
+  border-color: rgba(109, 77, 246, 0.4);
+  box-shadow: 0 8px 22px rgba(15, 7, 38, 0.18);
+}
+
+/* Bloque de información */
+.pagina-oscura:has(.lista-gestiones) .gestion-info {
+  min-width: 0;
+  width: 100%;
+}
+
+.pagina-oscura:has(.lista-gestiones) .gestion-info h2 {
+  margin: 0 0 0.55rem;
+  color: #251c3f;
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  margin-bottom: 0.65rem;
+}
+
+/* Datos distribuidos horizontalmente */
+.pagina-oscura:has(.lista-gestiones) .gestion-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: 1.2rem;
+  row-gap: 0.4rem;
+
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.pagina-oscura:has(.lista-gestiones) .gestion-meta span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+
+  color: #625b79;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* Botón compacto sin subrayado */
+.pagina-oscura:has(.lista-gestiones) .gestion-tarjeta > .boton-secundario {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  white-space: nowrap;
+
+  padding: 0.75rem 1rem;
+  border: 1px solid #6d4df6;
+  border-radius: 17px;
+  background: #6d4df6;
+  color: #fff !important;
+
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none !important;
+  line-height: 1.3;
+}
+
+.pagina-oscura:has(.lista-gestiones) .gestion-tarjeta > .boton-secundario:hover {
+  background: #5a35e8;
+  border-color: #5a35e8;
+  color: #fff !important;
+  text-decoration: none !important;
+}
+
+/* Volver a Hoy, separado de la lista */
+.pagina-oscura:has(.lista-gestiones) > .contenedor > .enlace-secundario {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  margin: 1.5rem 0 0;
+  padding: 0.65rem 0.9rem;
+
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff !important;
+
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none !important;
+}
+
+.pagina-oscura:has(.lista-gestiones) > .contenedor > .enlace-secundario:hover {
+  background: rgba(255, 255, 255, 0.14);
+  text-decoration: none !important;
+}
+
+/* Móviles */
+@media (max-width: 650px) {
+  .pagina-oscura:has(.lista-gestiones) .gestion-tarjeta {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.8rem;
+    padding: 1rem;
+  }
+
+  .pagina-oscura:has(.lista-gestiones) .gestion-meta {
+    column-gap: 0.8rem;
+  }
+
+  .pagina-oscura:has(.lista-gestiones) .gestion-tarjeta > .boton-secundario {
+    width: 100%;
+  }
+}

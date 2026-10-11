@@ -1,5 +1,7 @@
+
 import { useEffect, useState } from "react";
-import { useParams, useLocation, Link } from "react-router-dom";
+import { CalendarPlus, ListPlus } from "lucide-react";
+import { useParams, useLocation, Link, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { getAuthHeaders } from "../auth";
 import {
@@ -99,6 +101,7 @@ function IconoLapiz() {
 function Evento() {
   const { id } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [evento, setEvento] = useState(null);
   const [error, setError] = useState("");
@@ -116,6 +119,30 @@ function Evento() {
   const [erroresEdit, setErroresEdit] = useState({});
   const [guardando, setGuardando] = useState(false);
   const [exitoMsg, setExitoMsg] = useState("");
+
+  // Edición y eliminación de subtareas
+const [subtareaEditando, setSubtareaEditando] = useState(null);
+const [formSubtarea, setFormSubtarea] = useState({
+  nombre: "",
+  plazo: "",
+  horas_estimadas: 2,
+});
+const [guardandoSubtarea, setGuardandoSubtarea] = useState(false);
+const [errorSubtarea, setErrorSubtarea] = useState("");
+
+const [mostrarFormularioSubtarea, setMostrarFormularioSubtarea] = useState(false);
+// Estados para agregar subtareas nuevas
+const [nuevaSubtarea, setNuevaSubtarea] = useState({
+  nombre: "",
+  plazo: "",
+  horas_estimadas: 2,
+});
+
+const [guardandoNuevaSubtarea, setGuardandoNuevaSubtarea] = useState(false);
+const [errorNuevaSubtarea, setErrorNuevaSubtarea] = useState("");
+
+const [errorAccion, setErrorAccion] = useState("");
+const [eliminandoEvento, setEliminandoEvento] = useState(false);
 
   // Si Crear.jsx redirigió aquí después de que alguna subtarea fallara al
   // guardarse, viene en location.state.erroresSubtareas.
@@ -258,6 +285,270 @@ function Evento() {
     setGuardando(false);
   };
 
+
+const iniciarEdicionSubtarea = (subtarea) => {
+  setSubtareaEditando(subtarea.id);
+  setFormSubtarea({
+    nombre: subtarea.nombre || "",
+    plazo: subtarea.plazo || "",
+    horas_estimadas: subtarea.horas_estimadas ?? 2,
+  });
+  setErrorSubtarea("");
+  setErrorAccion("");
+};
+
+const cancelarEdicionSubtarea = () => {
+  setSubtareaEditando(null);
+  setErrorSubtarea("");
+};
+
+const manejarCambioSubtarea = (e) => {
+  setFormSubtarea({
+    ...formSubtarea,
+    [e.target.name]: e.target.value,
+  });
+};
+
+const guardarSubtarea = async (e, subtareaId) => {
+  e.preventDefault();
+  setErrorSubtarea("");
+
+  if (!esTextoValido(formSubtarea.nombre)) {
+    setErrorSubtarea(
+      "El nombre debe tener al menos 3 caracteres e incluir letras."
+    );
+    return;
+  }
+
+  if (!formSubtarea.plazo) {
+    setErrorSubtarea("Selecciona un plazo.");
+    return;
+  }
+
+  if (
+    !Number.isInteger(Number(formSubtarea.horas_estimadas)) ||
+    Number(formSubtarea.horas_estimadas) < 1
+  ) {
+    setErrorSubtarea("Las horas estimadas deben ser un número entero positivo.");
+    return;
+  }
+
+  setGuardandoSubtarea(true);
+
+  try {
+    const respuesta = await fetch(
+      `${API_URL}/subtareas/${subtareaId}/`,
+      {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          nombre: formSubtarea.nombre.trim(),
+          plazo: formSubtarea.plazo,
+          horas_estimadas: Number(formSubtarea.horas_estimadas),
+        }),
+      }
+    );
+
+    const datos = await respuesta.json().catch(() => ({}));
+
+    
+  if (!respuesta.ok) {
+  if (datos.conflicto && datos.mensaje) {
+    setErrorSubtarea(datos.mensaje);
+    return;
+  }
+
+  const normalizados = normalizarErroresBackend(datos);
+
+  setErrorSubtarea(
+    normalizados.general ||
+      resumenErrores(normalizados) ||
+      "No se pudo guardar la subtarea. Revisa los datos."
+  );
+
+  return;
+}
+
+
+    setEvento((anterior) => ({
+      ...anterior,
+      subtareas: anterior.subtareas
+        .map((s) => (s.id === subtareaId ? datos : s))
+        .sort((a, b) => a.plazo.localeCompare(b.plazo)),
+    }));
+
+    setSubtareaEditando(null);
+    setExitoMsg("La subtarea se actualizó correctamente.");
+  } catch (err) {
+    console.error(err);
+    setErrorSubtarea("No se pudo conectar con el servidor.");
+  } finally {
+    setGuardandoSubtarea(false);
+  }
+};
+
+
+
+const crearNuevaSubtarea = async (e) => {
+  e.preventDefault();
+  setErrorNuevaSubtarea("");
+
+  const nombre = nuevaSubtarea.nombre.trim();
+  const plazo = nuevaSubtarea.plazo;
+  const horas = Number(nuevaSubtarea.horas_estimadas);
+
+  if (!nombre || !plazo || !Number.isFinite(horas) || horas <= 0) {
+    setErrorNuevaSubtarea(
+      "Completa todos los campos con valores válidos."
+    );
+    return;
+  }
+
+  try {
+    setGuardandoNuevaSubtarea(true);
+
+    const respuesta = await fetch(
+      `${API_URL}/eventos/${id}/subtareas/`,
+      {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nombre,
+          plazo,
+          horas_estimadas: horas,
+        }),
+      }
+    );
+
+    const datos = await respuesta.json().catch(() => ({}));
+
+    if (!respuesta.ok) {
+      setErrorNuevaSubtarea(
+        datos.mensaje ||
+        datos.detail ||
+        datos.error ||
+        Object.values(datos)
+          .flat()
+          .filter((valor) => typeof valor === "string")
+          .join(" ") ||
+        "No fue posible crear la subtarea."
+      );
+      return;
+    }
+
+    setEvento((anterior) => ({
+      ...anterior,
+      subtareas: [...(anterior.subtareas || []), datos].sort(
+        (a, b) => a.plazo.localeCompare(b.plazo)
+      ),
+    }));
+
+    setNuevaSubtarea({
+      nombre: "",
+      plazo: "",
+      horas_estimadas: 2,
+    });
+
+setMostrarFormularioSubtarea(false);
+setExitoMsg("¡Subtarea agregada correctamente!");
+
+  } catch {
+    setErrorNuevaSubtarea(
+      "No se pudo conectar con el servidor."
+    );
+  } finally {
+    setGuardandoNuevaSubtarea(false);
+  }
+};
+
+
+const eliminarSubtarea = async (subtarea) => {
+  const confirmar = window.confirm(
+    `¿Seguro que quieres eliminar "${subtarea.nombre}"? Esta acción no se puede deshacer.`
+  );
+
+  if (!confirmar) return;
+
+  setErrorAccion("");
+
+  try {
+    const respuesta = await fetch(
+      `${API_URL}/subtareas/${subtarea.id}/`,
+      {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      }
+    );
+
+    if (!respuesta.ok) {
+      const datos = await respuesta.json().catch(() => ({}));
+      setErrorAccion(
+        datos.error || "No se pudo eliminar la subtarea."
+      );
+      return;
+    }
+
+    setEvento((anterior) => ({
+      ...anterior,
+      subtareas: anterior.subtareas.filter(
+        (s) => s.id !== subtarea.id
+      ),
+    }));
+
+    if (subtareaEditando === subtarea.id) {
+      setSubtareaEditando(null);
+    }
+
+    setExitoMsg("La subtarea se eliminó correctamente.");
+  } catch (err) {
+    console.error(err);
+    setErrorAccion("No se pudo conectar con el servidor.");
+  }
+};
+
+const eliminarEvento = async () => {
+  const confirmar = window.confirm(
+    `¿Seguro que quieres eliminar "${evento.nombre}" y todas sus subtareas? Esta acción no se puede deshacer.`
+  );
+
+  if (!confirmar) return;
+
+  setEliminandoEvento(true);
+  setErrorAccion("");
+
+  try {
+    const respuesta = await fetch(
+      `${API_URL}/eventos/${id}/`,
+      {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      }
+    );
+
+    if (!respuesta.ok) {
+      const datos = await respuesta.json().catch(() => ({}));
+      setErrorAccion(
+        datos.error || "No se pudo eliminar el evento."
+      );
+      setEliminandoEvento(false);
+      return;
+    }
+
+    navigate("/eventos", {
+      state: { mensaje: "El evento y sus subtareas se eliminaron correctamente." },
+    });
+  } catch (err) {
+    console.error(err);
+    setErrorAccion("No se pudo conectar con el servidor.");
+  } finally {
+    setEliminandoEvento(false);
+  }
+};
+
+
   if (error) {
     return (
       <div className="pagina pagina-oscura">
@@ -310,6 +601,12 @@ function Evento() {
         {exitoMsg && (
           <p className="alerta alerta-exito">
             <IconoExito /> {exitoMsg}
+          </p>
+        )}
+
+        {errorAccion && (
+          <p className="alerta alerta-error" role="alert">
+            <IconoError /> {errorAccion}
           </p>
         )}
 
@@ -432,28 +729,42 @@ function Evento() {
               </div>
 
               <div className="evento-acciones">
-                <button type="submit" className="boton-principal" disabled={guardando}>
-                  {guardando ? "Guardando..." : "Guardar cambios"}
-                </button>
-                <button
-                  type="button"
-                  className="boton-secundario"
-                  onClick={cancelarEdicion}
-                  disabled={guardando}
-                >
-                  Cancelar
-                </button>
-              </div>
+              <button type="submit" className="boton-edicion-violeta">
+                Guardar cambios
+              </button>
+
+              <button
+                type="button"
+                className="boton-edicion-violeta"
+                onClick={cancelarEdicion}
+              >
+                Cancelar
+              </button>
+            </div>
+
             </form>
           ) : (
             <>
               <div className="evento-header-top">
                 <h1>{evento.nombre}</h1>
                 <div className="evento-acciones">
-                  <button type="button" className="boton-secundario" onClick={iniciarEdicion}>
-                    <IconoLapiz /> Editar
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className="boton-secundario"
+                  onClick={iniciarEdicion}
+                >
+                  <IconoLapiz /> Editar
+                </button>
+
+                <button
+                  type="button"
+                  className="boton-secundario"
+                  onClick={eliminarEvento}
+                  disabled={eliminandoEvento}
+                >
+                  {eliminandoEvento ? "Eliminando..." : "Eliminar evento"}
+                </button>
+              </div>
               </div>
               <dl className="detalle-grid">
                 <dt>Tipo</dt>
@@ -484,36 +795,254 @@ function Evento() {
             : `${evento.subtareas.length} gestión(es) registrada(s), ordenadas por plazo.`}
         </p>
 
-        {evento.subtareas.length === 0 ? (
-          <p className="estado-vacio">
-            Aún no hay gestiones logísticas para este evento.
-          </p>
-        ) : (
-          <div className="lista-gestiones">
-            {evento.subtareas.map((subtarea) => (
-              <div
-                key={subtarea.id}
-                className="gestion-tarjeta"
-                data-estado={subtarea.estado}
-              >
-                <div className="gestion-info">
-                  <h3>{subtarea.nombre}</h3>
-                  <div className="gestion-meta">
-                    <span>Plazo: {formatearSoloFecha(subtarea.plazo)}</span>
-                    <span>{subtarea.horas_estimadas} h estimadas</span>
-                  </div>
-                </div>
-                <span className="badge-estado" data-estado={subtarea.estado}>
-                  {ESTADO_LABEL[subtarea.estado] || subtarea.estado}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        
 
-        <Link to="/crear" className="enlace-secundario">
-          + Crear otro evento
-        </Link>
+              <div className="nueva-subtarea-contenedor">
+                <div className="acciones-subtareas">
+                  <Link to="/crear" className="boton-accion-subtarea">
+                    <CalendarPlus size={18} />
+                    <span>Crear otro evento</span>
+                  </Link>
+
+                  <button
+                    type="button"
+                    className="boton-accion-subtarea"
+                    onClick={() => {
+                      setMostrarFormularioSubtarea((anterior) => !anterior);
+                      setErrorNuevaSubtarea("");
+                    }}
+                  >
+                    <ListPlus size={18} />
+                    <span>
+                      {mostrarFormularioSubtarea
+                        ? "Cancelar"
+                        : "Agregar subtarea"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+
+          {mostrarFormularioSubtarea && (
+            <form
+              className="formulario-nueva-subtarea"
+              onSubmit={crearNuevaSubtarea}
+            >
+              <h3>Agregar subtarea</h3>
+
+              <div className="fila-nueva-subtarea">
+                <div className="campo-subtarea">
+                  <label htmlFor="nueva-subtarea-nombre">Nombre</label>
+                  <input
+                    id="nueva-subtarea-nombre"
+                    type="text"
+                    value={nuevaSubtarea.nombre}
+                    onChange={(e) =>
+                      setNuevaSubtarea((anterior) => ({
+                        ...anterior,
+                        nombre: e.target.value,
+                      }))
+                    }
+                    placeholder="Ej. Confirmar invitados"
+                    required
+                    disabled={guardandoNuevaSubtarea}
+                  />
+                </div>
+
+                <div className="campo-subtarea">
+                  <label htmlFor="nueva-subtarea-plazo">Plazo</label>
+                  <input
+                    id="nueva-subtarea-plazo"
+                    type="date"
+                    value={nuevaSubtarea.plazo}
+                    onChange={(e) =>
+                      setNuevaSubtarea((anterior) => ({
+                        ...anterior,
+                        plazo: e.target.value,
+                      }))
+                    }
+                    required
+                    disabled={guardandoNuevaSubtarea}
+                  />
+                </div>
+
+                <div className="campo-subtarea campo-horas">
+                  <label htmlFor="nueva-subtarea-horas">
+                    Horas estimadas
+                  </label>
+                  <input
+                    id="nueva-subtarea-horas"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={nuevaSubtarea.horas_estimadas}
+                    onChange={(e) =>
+                      setNuevaSubtarea((anterior) => ({
+                        ...anterior,
+                        horas_estimadas: e.target.value,
+                      }))
+                    }
+                    required
+                    disabled={guardandoNuevaSubtarea}
+                  />
+                </div>
+              </div>
+
+              {errorNuevaSubtarea && (
+                <p className="alerta alerta-error" role="alert">
+                  <IconoError /> {errorNuevaSubtarea}
+                </p>
+              )}
+
+              <div className="acciones-nueva-subtarea">
+                <button
+                  type="submit"
+                  className="boton-principal"
+                  disabled={guardandoNuevaSubtarea}
+                >
+                  {guardandoNuevaSubtarea
+                    ? "Guardando..."
+                    : "Agregar subtarea"}
+                </button>
+              </div>
+              
+            </form>
+          )}
+
+          {evento.subtareas.length === 0 ? (
+
+            <p className="estado-vacio">
+              Aún no hay gestiones logísticas para este evento.
+            </p>
+          ) : (
+            <div className="lista-gestiones">
+              {evento.subtareas.map((subtarea) => (
+                <div
+                  key={subtarea.id}
+                  className="gestion-tarjeta"
+                  data-estado={subtarea.estado}
+                >
+                  {subtareaEditando === subtarea.id ? (
+                    <form
+                      className="gestion-info"
+                      onSubmit={(e) => guardarSubtarea(e, subtarea.id)}
+                    >
+                      <h3>Editar subtarea</h3>
+
+                      {errorSubtarea && (
+                      <p
+                        className="alerta alerta-error"
+                        role="alert"
+                        style={{ whiteSpace: "pre-line" }}
+                      >
+                        <IconoError /> {errorSubtarea}
+                      </p>
+                    )}
+
+                      <div className="campo">
+                        <label htmlFor={`nombre-${subtarea.id}`}>Nombre</label>
+                        <input
+                          id={`nombre-${subtarea.id}`}
+                          name="nombre"
+                          value={formSubtarea.nombre}
+                          onChange={manejarCambioSubtarea}
+                          disabled={guardandoSubtarea}
+                          required
+                        />
+                      </div>
+
+                      <div className="campo">
+                        <label htmlFor={`plazo-${subtarea.id}`}>Plazo</label>
+                        <input
+                          id={`plazo-${subtarea.id}`}
+                          type="date"
+                          name="plazo"
+                          value={formSubtarea.plazo}
+                          onChange={manejarCambioSubtarea}
+                          disabled={guardandoSubtarea}
+                          required
+                        />
+                      </div>
+
+                      <div className="campo">
+                        <label htmlFor={`horas-${subtarea.id}`}>
+                          Horas estimadas
+                        </label>
+                        <input
+                          id={`horas-${subtarea.id}`}
+                          type="number"
+                          name="horas_estimadas"
+                          min="1"
+                          step="1"
+                          value={formSubtarea.horas_estimadas}
+                          onChange={manejarCambioSubtarea}
+                          disabled={guardandoSubtarea}
+                          required
+                        />
+                      </div>
+
+                      <div className="evento-acciones">
+                        <button
+                          type="submit"
+                          className="boton-principal"
+                          disabled={guardandoSubtarea}
+                        >
+                          {guardandoSubtarea ? "Guardando..." : "Guardar cambios"}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="boton-secundario"
+                          onClick={cancelarEdicionSubtarea}
+                          disabled={guardandoSubtarea}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="gestion-info">
+                        <h3>{subtarea.nombre}</h3>
+
+                        <div className="gestion-meta">
+                          <span>
+                            Plazo: {formatearSoloFecha(subtarea.plazo)}
+                          </span>
+                          <span>{subtarea.horas_estimadas} h estimadas</span>
+                        </div>
+                      </div>
+
+                      <span
+                        className="badge-estado"
+                        data-estado={subtarea.estado}
+                      >
+                        {ESTADO_LABEL[subtarea.estado] || subtarea.estado}
+                      </span>
+
+                      <div className="evento-acciones">
+                        <button
+                          type="button"
+                          className="boton-secundario"
+                          onClick={() => iniciarEdicionSubtarea(subtarea)}
+                        >
+                          <IconoLapiz /> Editar
+                        </button>
+
+                        <button
+                          type="button"
+                          className="boton-secundario"
+                          onClick={() => eliminarSubtarea(subtarea)}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
       </main>
     </div>
   );

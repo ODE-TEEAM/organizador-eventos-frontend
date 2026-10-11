@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Registro from "./pages/Registro";
 import Hoy from "./pages/Hoy";
 import Crear from "./pages/Crear";
+import Eventos from "./pages/Eventos";
 import Evento from "./pages/Evento";
 import Progreso from "./pages/Progreso";
 
@@ -37,6 +38,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Crear />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/eventos"
+          element={
+            <ProtectedRoute>
+              <Eventos />
             </ProtectedRoute>
           }
         />
