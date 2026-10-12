@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { CalendarPlus, ListPlus } from "lucide-react";
 import { useParams, useLocation, Link, useNavigate } from "react-router-dom";
@@ -22,13 +21,14 @@ const ESTADO_LABEL = {
   pendiente: "Pendiente",
   EJECUTADA: "Ejecutada",
   ejecutada: "Ejecutada",
+  completada: "Completada",
+  COMPLETADA: "Completada",
   POSPUESTA: "Pospuesta",
   pospuesta: "Pospuesta",
 };
 
 const LONGITUD_MINIMA_TEXTO = 3;
 const CONTIENE_LETRA = /[a-zA-ZÀ-ÿ]/;
-
 
 function esTextoValido(valor) {
   const limpio = (valor || "").trim();
@@ -60,8 +60,6 @@ function formatearSoloFecha(valor) {
   return fecha.toLocaleDateString("es-CO", { dateStyle: "long" });
 }
 
-// Convierte la fecha+hora que devuelve el backend (ISO con zona) al formato
-// local "YYYY-MM-DDTHH:mm" que entiende el <input type="datetime-local">.
 function aDateTimeLocal(valor) {
   if (!valor) return "";
   const fecha = new Date(valor);
@@ -97,7 +95,6 @@ function IconoLapiz() {
   );
 }
 
-
 function Evento() {
   const { id } = useParams();
   const location = useLocation();
@@ -106,7 +103,6 @@ function Evento() {
   const [evento, setEvento] = useState(null);
   const [error, setError] = useState("");
 
-  // Modo edición del evento
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState({
     nombre: "",
@@ -120,58 +116,75 @@ function Evento() {
   const [guardando, setGuardando] = useState(false);
   const [exitoMsg, setExitoMsg] = useState("");
 
-  // Edición y eliminación de subtareas
-const [subtareaEditando, setSubtareaEditando] = useState(null);
-const [formSubtarea, setFormSubtarea] = useState({
-  nombre: "",
-  plazo: "",
-  horas_estimadas: 2,
-});
-const [guardandoSubtarea, setGuardandoSubtarea] = useState(false);
-const [errorSubtarea, setErrorSubtarea] = useState("");
+  const [subtareaEditando, setSubtareaEditando] = useState(null);
+  const [formSubtarea, setFormSubtarea] = useState({
+    nombre: "",
+    plazo: "",
+    horas_estimadas: 2,
+  });
+  const [guardandoSubtarea, setGuardandoSubtarea] = useState(false);
+  const [errorSubtarea, setErrorSubtarea] = useState("");
 
-const [mostrarFormularioSubtarea, setMostrarFormularioSubtarea] = useState(false);
-// Estados para agregar subtareas nuevas
-const [nuevaSubtarea, setNuevaSubtarea] = useState({
-  nombre: "",
-  plazo: "",
-  horas_estimadas: 2,
-});
+  const [mostrarFormularioSubtarea, setMostrarFormularioSubtarea] = useState(false);
+  const [nuevaSubtarea, setNuevaSubtarea] = useState({
+    nombre: "",
+    plazo: "",
+    horas_estimadas: 2,
+  });
+  const [guardandoNuevaSubtarea, setGuardandoNuevaSubtarea] = useState(false);
+  const [errorNuevaSubtarea, setErrorNuevaSubtarea] = useState("");
 
-const [guardandoNuevaSubtarea, setGuardandoNuevaSubtarea] = useState(false);
-const [errorNuevaSubtarea, setErrorNuevaSubtarea] = useState("");
+  const [errorAccion, setErrorAccion] = useState("");
+  const [eliminandoEvento, setEliminandoEvento] = useState(false);
 
-const [errorAccion, setErrorAccion] = useState("");
-const [eliminandoEvento, setEliminandoEvento] = useState(false);
+  // C1 Sprint 4: Hecha / Posponer
+  const [gestionAccion, setGestionAccion] = useState(null);
+  const [notaPosponer, setNotaPosponer] = useState("");
+  const [guardandoAccion, setGuardandoAccion] = useState(false);
+  const [mensajeAccion, setMensajeAccion] = useState("");
 
-  // Si Crear.jsx redirigió aquí después de que alguna subtarea fallara al
-  // guardarse, viene en location.state.erroresSubtareas.
   const erroresSubtareas = location.state?.erroresSubtareas;
-  console.log("Errores recibidos en Evento.jsx:", erroresSubtareas);
 
   useEffect(() => {
     const obtenerEvento = async () => {
       try {
         const respuesta = await fetch(`${API_URL}/eventos/${id}/`, {
-          headers: getAuthHeaders(), // ← envía el token
+          headers: getAuthHeaders(),
         });
 
         const datos = await respuesta.json();
 
         if (!respuesta.ok) {
-          setError("No encontramos este evento. Puede que haya sido eliminado o que no sea tuyo.");
+          setError(
+            "No encontramos este evento. Puede que haya sido eliminado o que no sea tuyo."
+          );
           return;
         }
 
         setEvento(datos);
-      } catch (error) {
-        console.error(error);
-        setError("No pudimos conectar con el backend. Verifica que esté encendido e intenta de nuevo.");
+      } catch (err) {
+        console.error(err);
+        setError(
+          "No pudimos conectar con el backend. Verifica que esté encendido e intenta de nuevo."
+        );
       }
     };
 
     obtenerEvento();
   }, [id]);
+
+  useEffect(() => {
+    const tecla = (e) => {
+      if (e.key !== "Escape" || guardandoAccion) return;
+      if (gestionAccion) {
+        setGestionAccion(null);
+        setNotaPosponer("");
+        setMensajeAccion("");
+      }
+    };
+    window.addEventListener("keydown", tecla);
+    return () => window.removeEventListener("keydown", tecla);
+  }, [gestionAccion, guardandoAccion]);
 
   const iniciarEdicion = () => {
     setForm({
@@ -202,13 +215,15 @@ const [eliminandoEvento, setEliminandoEvento] = useState(false);
   const validarEdicion = () => {
     const errores = {};
     if (!esTextoValido(form.nombre)) {
-      errores.nombre = "Escribe un nombre real para el evento (mínimo 3 caracteres, con letras).";
+      errores.nombre =
+        "Escribe un nombre real para el evento (mínimo 3 caracteres, con letras).";
     }
     if (!esTextoValido(form.tipo)) {
       errores.tipo = "Indica un tipo de evento válido (ej. Boda, Cumpleaños).";
     }
     if (!esTextoValido(form.cliente)) {
-      errores.cliente = "Escribe el nombre real del cliente (mínimo 3 caracteres).";
+      errores.cliente =
+        "Escribe el nombre real del cliente (mínimo 3 caracteres).";
     }
     if (!form.fecha_hora) {
       errores.fecha_hora = "La fecha y hora del evento son obligatorias.";
@@ -218,7 +233,8 @@ const [eliminandoEvento, setEliminandoEvento] = useState(false);
       errores.fecha_hora = "La fecha y hora del evento deben ser futuras.";
     }
     if (!esTextoValido(form.lugar)) {
-      errores.lugar = "Escribe un lugar válido (mínimo 3 caracteres, con letras).";
+      errores.lugar =
+        "Escribe un lugar válido (mínimo 3 caracteres, con letras).";
     }
     if (!form.plazo_limite) {
       errores.plazo_limite = "El plazo límite es obligatorio.";
@@ -230,7 +246,8 @@ const [eliminandoEvento, setEliminandoEvento] = useState(false);
       form.fecha_hora &&
       form.plazo_limite > form.fecha_hora.slice(0, 10)
     ) {
-      errores.plazo_limite = "El plazo límite no puede ser después de la fecha del evento.";
+      errores.plazo_limite =
+        "El plazo límite no puede ser después de la fecha del evento.";
     }
     return errores;
   };
@@ -251,8 +268,6 @@ const [eliminandoEvento, setEliminandoEvento] = useState(false);
       const respuesta = await fetch(`${API_URL}/eventos/${id}/`, {
         method: "PATCH",
         headers: getAuthHeaders(),
-        // La fecha se envía en UTC (ISO con Z) para no desplazar la hora en
-        // cada guardado (el backend interpreta los valores naive como UTC).
         body: JSON.stringify({
           ...form,
           fecha_hora: new Date(form.fecha_hora).toISOString(),
@@ -262,12 +277,13 @@ const [eliminandoEvento, setEliminandoEvento] = useState(false);
       const datos = await respuesta.json();
 
       if (!respuesta.ok) {
-        // El backend devuelve errores por campo ({"campo": ["mensaje"]});
-        // los convertimos en texto legible, junto a cada campo y en el resumen.
         const normalizados = normalizarErroresBackend(datos);
         setErroresEdit({
           ...normalizados.campos,
-          general: normalizados.general || resumenErrores(normalizados) || undefined,
+          general:
+            normalizados.general ||
+            resumenErrores(normalizados) ||
+            undefined,
         });
         setGuardando(false);
         enfocarPrimerError(".pagina-formulario");
@@ -280,66 +296,66 @@ const [eliminandoEvento, setEliminandoEvento] = useState(false);
     } catch (err) {
       console.error(err);
       setErroresEdit({
-        general: "No pudimos conectar con el servidor. Intenta de nuevo en unos segundos.",
+        general:
+          "No pudimos conectar con el servidor. Intenta de nuevo en unos segundos.",
       });
     }
     setGuardando(false);
   };
 
+  const iniciarEdicionSubtarea = (subtarea) => {
+    setSubtareaEditando(subtarea.id);
+    setFormSubtarea({
+      nombre: subtarea.nombre || "",
+      plazo: subtarea.plazo || "",
+      horas_estimadas: subtarea.horas_estimadas ?? 2,
+    });
+    setErrorSubtarea("");
+    setErrorAccion("");
+  };
 
-const iniciarEdicionSubtarea = (subtarea) => {
-  setSubtareaEditando(subtarea.id);
-  setFormSubtarea({
-    nombre: subtarea.nombre || "",
-    plazo: subtarea.plazo || "",
-    horas_estimadas: subtarea.horas_estimadas ?? 2,
-  });
-  setErrorSubtarea("");
-  setErrorAccion("");
-};
+  const cancelarEdicionSubtarea = () => {
+    setSubtareaEditando(null);
+    setErrorSubtarea("");
+  };
 
-const cancelarEdicionSubtarea = () => {
-  setSubtareaEditando(null);
-  setErrorSubtarea("");
-};
+  const manejarCambioSubtarea = (e) => {
+    setFormSubtarea({
+      ...formSubtarea,
+      [e.target.name]: e.target.value,
+    });
+  };
 
-const manejarCambioSubtarea = (e) => {
-  setFormSubtarea({
-    ...formSubtarea,
-    [e.target.name]: e.target.value,
-  });
-};
+  const guardarSubtarea = async (e, subtareaId) => {
+    e.preventDefault();
+    setErrorSubtarea("");
 
-const guardarSubtarea = async (e, subtareaId) => {
-  e.preventDefault();
-  setErrorSubtarea("");
+    if (!esTextoValido(formSubtarea.nombre)) {
+      setErrorSubtarea(
+        "El nombre debe tener al menos 3 caracteres e incluir letras."
+      );
+      return;
+    }
 
-  if (!esTextoValido(formSubtarea.nombre)) {
-    setErrorSubtarea(
-      "El nombre debe tener al menos 3 caracteres e incluir letras."
-    );
-    return;
-  }
+    if (!formSubtarea.plazo) {
+      setErrorSubtarea("Selecciona un plazo.");
+      return;
+    }
 
-  if (!formSubtarea.plazo) {
-    setErrorSubtarea("Selecciona un plazo.");
-    return;
-  }
+    if (
+      !Number.isInteger(Number(formSubtarea.horas_estimadas)) ||
+      Number(formSubtarea.horas_estimadas) < 1
+    ) {
+      setErrorSubtarea(
+        "Las horas estimadas deben ser un número entero positivo."
+      );
+      return;
+    }
 
-  if (
-    !Number.isInteger(Number(formSubtarea.horas_estimadas)) ||
-    Number(formSubtarea.horas_estimadas) < 1
-  ) {
-    setErrorSubtarea("Las horas estimadas deben ser un número entero positivo.");
-    return;
-  }
+    setGuardandoSubtarea(true);
 
-  setGuardandoSubtarea(true);
-
-  try {
-    const respuesta = await fetch(
-      `${API_URL}/subtareas/${subtareaId}/`,
-      {
+    try {
+      const respuesta = await fetch(`${API_URL}/subtareas/${subtareaId}/`, {
         method: "PATCH",
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -347,70 +363,61 @@ const guardarSubtarea = async (e, subtareaId) => {
           plazo: formSubtarea.plazo,
           horas_estimadas: Number(formSubtarea.horas_estimadas),
         }),
+      });
+
+      const datos = await respuesta.json().catch(() => ({}));
+
+      if (!respuesta.ok) {
+        if (datos.conflicto && datos.mensaje) {
+          setErrorSubtarea(datos.mensaje);
+          setGuardandoSubtarea(false);
+          return;
+        }
+
+        const normalizados = normalizarErroresBackend(datos);
+        setErrorSubtarea(
+          normalizados.general ||
+            resumenErrores(normalizados) ||
+            "No se pudo guardar la subtarea. Revisa los datos."
+        );
+        setGuardandoSubtarea(false);
+        return;
       }
-    );
 
-    const datos = await respuesta.json().catch(() => ({}));
+      setEvento((anterior) => ({
+        ...anterior,
+        subtareas: anterior.subtareas
+          .map((s) => (s.id === subtareaId ? datos : s))
+          .sort((a, b) => a.plazo.localeCompare(b.plazo)),
+      }));
 
-    
-  if (!respuesta.ok) {
-  if (datos.conflicto && datos.mensaje) {
-    setErrorSubtarea(datos.mensaje);
-    return;
-  }
+      setSubtareaEditando(null);
+      setExitoMsg("La subtarea se actualizó correctamente.");
+    } catch (err) {
+      console.error(err);
+      setErrorSubtarea("No se pudo conectar con el servidor.");
+    } finally {
+      setGuardandoSubtarea(false);
+    }
+  };
 
-  const normalizados = normalizarErroresBackend(datos);
+  const crearNuevaSubtarea = async (e) => {
+    e.preventDefault();
+    setErrorNuevaSubtarea("");
 
-  setErrorSubtarea(
-    normalizados.general ||
-      resumenErrores(normalizados) ||
-      "No se pudo guardar la subtarea. Revisa los datos."
-  );
+    const nombre = nuevaSubtarea.nombre.trim();
+    const plazo = nuevaSubtarea.plazo;
+    const horas = Number(nuevaSubtarea.horas_estimadas);
 
-  return;
-}
+    if (!nombre || !plazo || !Number.isFinite(horas) || horas <= 0) {
+      setErrorNuevaSubtarea("Completa todos los campos con valores válidos.");
+      return;
+    }
 
+    try {
+      setGuardandoNuevaSubtarea(true);
 
-    setEvento((anterior) => ({
-      ...anterior,
-      subtareas: anterior.subtareas
-        .map((s) => (s.id === subtareaId ? datos : s))
-        .sort((a, b) => a.plazo.localeCompare(b.plazo)),
-    }));
-
-    setSubtareaEditando(null);
-    setExitoMsg("La subtarea se actualizó correctamente.");
-  } catch (err) {
-    console.error(err);
-    setErrorSubtarea("No se pudo conectar con el servidor.");
-  } finally {
-    setGuardandoSubtarea(false);
-  }
-};
-
-
-
-const crearNuevaSubtarea = async (e) => {
-  e.preventDefault();
-  setErrorNuevaSubtarea("");
-
-  const nombre = nuevaSubtarea.nombre.trim();
-  const plazo = nuevaSubtarea.plazo;
-  const horas = Number(nuevaSubtarea.horas_estimadas);
-
-  if (!nombre || !plazo || !Number.isFinite(horas) || horas <= 0) {
-    setErrorNuevaSubtarea(
-      "Completa todos los campos con valores válidos."
-    );
-    return;
-  }
-
-  try {
-    setGuardandoNuevaSubtarea(true);
-
-    const respuesta = await fetch(
-      `${API_URL}/eventos/${id}/subtareas/`,
-      {
+      const respuesta = await fetch(`${API_URL}/eventos/${id}/subtareas/`, {
         method: "POST",
         headers: {
           ...getAuthHeaders(),
@@ -421,134 +428,210 @@ const crearNuevaSubtarea = async (e) => {
           plazo,
           horas_estimadas: horas,
         }),
+      });
+
+      const datos = await respuesta.json().catch(() => ({}));
+
+      if (!respuesta.ok) {
+        setErrorNuevaSubtarea(
+          datos.mensaje ||
+            datos.detail ||
+            datos.error ||
+            Object.values(datos)
+              .flat()
+              .filter((valor) => typeof valor === "string")
+              .join(" ") ||
+            "No fue posible crear la subtarea."
+        );
+        return;
       }
-    );
 
-    const datos = await respuesta.json().catch(() => ({}));
+      setEvento((anterior) => ({
+        ...anterior,
+        subtareas: [...(anterior.subtareas || []), datos].sort((a, b) =>
+          a.plazo.localeCompare(b.plazo)
+        ),
+      }));
 
-    if (!respuesta.ok) {
-      setErrorNuevaSubtarea(
-        datos.mensaje ||
-        datos.detail ||
-        datos.error ||
-        Object.values(datos)
-          .flat()
-          .filter((valor) => typeof valor === "string")
-          .join(" ") ||
-        "No fue posible crear la subtarea."
-      );
-      return;
+      setNuevaSubtarea({
+        nombre: "",
+        plazo: "",
+        horas_estimadas: 2,
+      });
+
+      setMostrarFormularioSubtarea(false);
+      setExitoMsg("¡Subtarea agregada correctamente!");
+    } catch {
+      setErrorNuevaSubtarea("No se pudo conectar con el servidor.");
+    } finally {
+      setGuardandoNuevaSubtarea(false);
     }
+  };
 
-    setEvento((anterior) => ({
-      ...anterior,
-      subtareas: [...(anterior.subtareas || []), datos].sort(
-        (a, b) => a.plazo.localeCompare(b.plazo)
-      ),
-    }));
-
-    setNuevaSubtarea({
-      nombre: "",
-      plazo: "",
-      horas_estimadas: 2,
-    });
-
-setMostrarFormularioSubtarea(false);
-setExitoMsg("¡Subtarea agregada correctamente!");
-
-  } catch {
-    setErrorNuevaSubtarea(
-      "No se pudo conectar con el servidor."
+  const eliminarSubtarea = async (subtarea) => {
+    const confirmar = window.confirm(
+      `¿Seguro que quieres eliminar "${subtarea.nombre}"? Esta acción no se puede deshacer.`
     );
-  } finally {
-    setGuardandoNuevaSubtarea(false);
-  }
-};
 
+    if (!confirmar) return;
 
-const eliminarSubtarea = async (subtarea) => {
-  const confirmar = window.confirm(
-    `¿Seguro que quieres eliminar "${subtarea.nombre}"? Esta acción no se puede deshacer.`
-  );
+    setErrorAccion("");
 
-  if (!confirmar) return;
-
-  setErrorAccion("");
-
-  try {
-    const respuesta = await fetch(
-      `${API_URL}/subtareas/${subtarea.id}/`,
-      {
+    try {
+      const respuesta = await fetch(`${API_URL}/subtareas/${subtarea.id}/`, {
         method: "DELETE",
         headers: getAuthHeaders(),
+      });
+
+      if (!respuesta.ok) {
+        const datos = await respuesta.json().catch(() => ({}));
+        setErrorAccion(datos.error || "No se pudo eliminar la subtarea.");
+        return;
       }
+
+      setEvento((anterior) => ({
+        ...anterior,
+        subtareas: anterior.subtareas.filter((s) => s.id !== subtarea.id),
+      }));
+
+      if (subtareaEditando === subtarea.id) {
+        setSubtareaEditando(null);
+      }
+
+      setExitoMsg("La subtarea se eliminó correctamente.");
+    } catch (err) {
+      console.error(err);
+      setErrorAccion("No se pudo conectar con el servidor.");
+    }
+  };
+
+  const eliminarEvento = async () => {
+    const confirmar = window.confirm(
+      `¿Seguro que quieres eliminar "${evento.nombre}" y todas sus subtareas? Esta acción no se puede deshacer.`
     );
 
-    if (!respuesta.ok) {
-      const datos = await respuesta.json().catch(() => ({}));
-      setErrorAccion(
-        datos.error || "No se pudo eliminar la subtarea."
-      );
-      return;
-    }
+    if (!confirmar) return;
 
-    setEvento((anterior) => ({
-      ...anterior,
-      subtareas: anterior.subtareas.filter(
-        (s) => s.id !== subtarea.id
-      ),
-    }));
+    setEliminandoEvento(true);
+    setErrorAccion("");
 
-    if (subtareaEditando === subtarea.id) {
-      setSubtareaEditando(null);
-    }
-
-    setExitoMsg("La subtarea se eliminó correctamente.");
-  } catch (err) {
-    console.error(err);
-    setErrorAccion("No se pudo conectar con el servidor.");
-  }
-};
-
-const eliminarEvento = async () => {
-  const confirmar = window.confirm(
-    `¿Seguro que quieres eliminar "${evento.nombre}" y todas sus subtareas? Esta acción no se puede deshacer.`
-  );
-
-  if (!confirmar) return;
-
-  setEliminandoEvento(true);
-  setErrorAccion("");
-
-  try {
-    const respuesta = await fetch(
-      `${API_URL}/eventos/${id}/`,
-      {
+    try {
+      const respuesta = await fetch(`${API_URL}/eventos/${id}/`, {
         method: "DELETE",
         headers: getAuthHeaders(),
-      }
-    );
+      });
 
-    if (!respuesta.ok) {
-      const datos = await respuesta.json().catch(() => ({}));
-      setErrorAccion(
-        datos.error || "No se pudo eliminar el evento."
-      );
+      if (!respuesta.ok) {
+        const datos = await respuesta.json().catch(() => ({}));
+        setErrorAccion(datos.error || "No se pudo eliminar el evento.");
+        setEliminandoEvento(false);
+        return;
+      }
+
+      navigate("/eventos", {
+        state: {
+          mensaje: "El evento y sus subtareas se eliminaron correctamente.",
+        },
+      });
+    } catch (err) {
+      console.error(err);
+      setErrorAccion("No se pudo conectar con el servidor.");
+    } finally {
       setEliminandoEvento(false);
-      return;
+    }
+  };
+
+  // ---- C1: Hecha / Posponer ----
+  const abrirHecha = (subtarea) => {
+    setGestionAccion({ subtarea, tipo: "hecha" });
+    setNotaPosponer("");
+    setMensajeAccion("");
+  };
+
+  const abrirPosponer = (subtarea) => {
+    setGestionAccion({ subtarea, tipo: "posponer" });
+    setNotaPosponer("");
+    setMensajeAccion("");
+  };
+
+  const cerrarAccion = () => {
+    if (guardandoAccion) return;
+    setGestionAccion(null);
+    setNotaPosponer("");
+    setMensajeAccion("");
+  };
+
+  const confirmarAccion = async (e) => {
+    e?.preventDefault?.();
+    if (!gestionAccion) return;
+
+    const { subtarea, tipo } = gestionAccion;
+    setGuardandoAccion(true);
+    setMensajeAccion("");
+
+    const body =
+      tipo === "hecha"
+        ? { estado: "completada" }
+        : {
+            estado: "pospuesta",
+            ...((notaPosponer || "").trim()
+              ? { nota: notaPosponer.trim() }
+              : {}),
+          };
+
+    try {
+      const respuesta = await fetch(`${API_URL}/subtareas/${subtarea.id}/`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(body),
+      });
+
+      const datos = await respuesta.json().catch(() => ({}));
+
+      if (!respuesta.ok) {
+        setMensajeAccion(
+          datos.mensaje ||
+            datos.detail ||
+            datos.error ||
+            (typeof datos.estado === "string"
+              ? datos.estado
+              : Array.isArray(datos.estado)
+                ? datos.estado.join(" ")
+                : null) ||
+            (tipo === "hecha"
+              ? "No pudimos marcar la gestión como hecha. Intenta de nuevo."
+              : "No pudimos posponer la gestión. Intenta de nuevo.")
+        );
+        setGuardandoAccion(false);
+        return;
+      }
+
+      setEvento((anterior) => ({
+        ...anterior,
+        subtareas: anterior.subtareas.map((s) =>
+          s.id === subtarea.id ? { ...s, ...datos } : s
+        ),
+      }));
+
+      setGestionAccion(null);
+      setNotaPosponer("");
+      setMensajeAccion("");
+      setExitoMsg(
+        tipo === "hecha"
+          ? `Listo. "${subtarea.nombre}" quedó marcada como hecha.`
+          : `Gestión pospuesta${
+              (notaPosponer || "").trim() ? " y nota guardada" : ""
+            }.`
+      );
+    } catch (err) {
+      console.error(err);
+      setMensajeAccion(
+        "No pudimos conectar con el servidor. Verifica que el backend esté encendido."
+      );
     }
 
-    navigate("/eventos", {
-      state: { mensaje: "El evento y sus subtareas se eliminaron correctamente." },
-    });
-  } catch (err) {
-    console.error(err);
-    setErrorAccion("No se pudo conectar con el servidor.");
-  } finally {
-    setEliminandoEvento(false);
-  }
-};
-
+    setGuardandoAccion(false);
+  };
 
   if (error) {
     return (
@@ -584,103 +667,100 @@ const eliminarEvento = async () => {
       <Header />
 
       <main className="contenedor contenedor-estrecho pagina-formulario">
-        
-        
-        
-      {erroresSubtareas?.length > 0 && (
-        <div className="alerta-limite-horas" role="alert">
-          <div className="alerta-limite-encabezado">
-            <IconoError />
-            <div>
-              <strong>
-                El evento se creó, pero{" "}
-                {erroresSubtareas.length === 1
-                  ? "una gestión no pudo guardarse."
-                  : `${erroresSubtareas.length} gestiones no pudieron guardarse.`}
-              </strong>
-              <p>
-                Las gestiones que exceden tu límite diario no se guardaron.
-              </p>
+        {erroresSubtareas?.length > 0 && (
+          <div className="alerta-limite-horas" role="alert">
+            <div className="alerta-limite-encabezado">
+              <IconoError />
+              <div>
+                <strong>
+                  El evento se creó, pero{" "}
+                  {erroresSubtareas.length === 1
+                    ? "una gestión no pudo guardarse."
+                    : `${erroresSubtareas.length} gestiones no pudieron guardarse.`}
+                </strong>
+                <p>
+                  Las gestiones que exceden tu límite diario no se guardaron.
+                </p>
+              </div>
             </div>
-          </div>
 
-          {erroresSubtareas.map((error, i) => {
-            const detalle = error.detalle;
+            {erroresSubtareas.map((errItem, i) => {
+              const detalle = errItem.detalle;
 
-            if (!detalle) {
-              return <p key={i}>{error.mensaje}</p>;
-            }
+              if (!detalle) {
+                return <p key={i}>{errItem.mensaje}</p>;
+              }
 
-            const fecha = detalle.fecha
-              ? new Date(`${detalle.fecha}T12:00:00`).toLocaleDateString(
-                  "es-CO",
-                  {
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                  }
-                )
-              : "";
+              const fecha = detalle.fecha
+                ? new Date(`${detalle.fecha}T12:00:00`).toLocaleDateString(
+                    "es-CO",
+                    {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    }
+                  )
+                : "";
 
-            const exceso =
-              Number(detalle.horasTotales) - Number(detalle.limiteHoras);
+              const exceso =
+                Number(detalle.horasTotales) - Number(detalle.limiteHoras);
 
-            return (
-              <div className="limite-detalle" key={i}>
-                <div className="limite-info">
-                  <p className="limite-nombre">
-                    La gestión <strong>«{detalle.nombre}»</strong> supera el límite
-                    diario.
-                  </p>
-
-                  {fecha && (
-                    <p className="limite-fecha">
-                      DETALLE DEL {fecha.toLocaleUpperCase("es-CO")}
+              return (
+                <div className="limite-detalle" key={i}>
+                  <div className="limite-info">
+                    <p className="limite-nombre">
+                      La gestión <strong>«{detalle.nombre}»</strong> supera el
+                      límite diario.
                     </p>
-                  )}
 
-                  <div className="limite-metricas">
-                    <div className="limite-metrica">
-                      <span>Horas asignadas</span>
-                      <strong>{detalle.horasExistentes} h</strong>
+                    {fecha && (
+                      <p className="limite-fecha">
+                        DETALLE DEL {fecha.toLocaleUpperCase("es-CO")}
+                      </p>
+                    )}
+
+                    <div className="limite-metricas">
+                      <div className="limite-metrica">
+                        <span>Horas asignadas</span>
+                        <strong>{detalle.horasExistentes} h</strong>
+                      </div>
+
+                      <div className="limite-metrica">
+                        <span>Esta gestión</span>
+                        <strong>+{detalle.horasNuevas} h</strong>
+                      </div>
+
+                      <div className="limite-metrica">
+                        <span>Total resultante</span>
+                        <strong>{detalle.horasTotales} h</strong>
+                      </div>
+
+                      <div className="limite-metrica limite-metrica-maximo">
+                        <span>Límite diario</span>
+                        <strong>{detalle.limiteHoras} h</strong>
+                      </div>
                     </div>
 
-                    <div className="limite-metrica">
-                      <span>Esta gestión</span>
-                      <strong>+{detalle.horasNuevas} h</strong>
-                    </div>
-
-                    <div className="limite-metrica">
-                      <span>Total resultante</span>
-                      <strong>{detalle.horasTotales} h</strong>
-                    </div>
-
-                    <div className="limite-metrica limite-metrica-maximo">
-                      <span>Límite diario</span>
-                      <strong>{detalle.limiteHoras} h</strong>
-                    </div>
+                    {exceso > 0 && (
+                      <p className="limite-exceso">
+                        Te excedes por {exceso}{" "}
+                        {exceso === 1 ? "hora" : "horas"}.
+                      </p>
+                    )}
                   </div>
 
-                  {exceso > 0 && (
-                    <p className="limite-exceso">
-                      Te excedes por {exceso} {exceso === 1 ? "hora" : "horas"}.
+                  <div className="limite-solucion">
+                    <strong>¿Cómo solucionarlo?</strong>
+                    <p>
+                      Reduce la duración de esta gestión o cambia su fecha a un
+                      día con disponibilidad.
                     </p>
-                  )}
+                  </div>
                 </div>
-
-                <div className="limite-solucion">
-                  <strong>¿Cómo solucionarlo?</strong>
-                  <p>
-                    Reduce la duración de esta gestión o cambia su fecha a un día
-                    con disponibilidad.
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
+              );
+            })}
+          </div>
+        )}
 
         {exitoMsg && (
           <p className="alerta alerta-exito">
@@ -723,7 +803,9 @@ const eliminarEvento = async () => {
                     disabled={guardando}
                   />
                   {erroresEdit.nombre && (
-                    <span className="error-campo"><IconoError /> {erroresEdit.nombre}</span>
+                    <span className="error-campo">
+                      <IconoError /> {erroresEdit.nombre}
+                    </span>
                   )}
                 </div>
 
@@ -739,7 +821,9 @@ const eliminarEvento = async () => {
                     disabled={guardando}
                   />
                   {erroresEdit.tipo && (
-                    <span className="error-campo"><IconoError /> {erroresEdit.tipo}</span>
+                    <span className="error-campo">
+                      <IconoError /> {erroresEdit.tipo}
+                    </span>
                   )}
                 </div>
 
@@ -755,7 +839,9 @@ const eliminarEvento = async () => {
                     disabled={guardando}
                   />
                   {erroresEdit.cliente && (
-                    <span className="error-campo"><IconoError /> {erroresEdit.cliente}</span>
+                    <span className="error-campo">
+                      <IconoError /> {erroresEdit.cliente}
+                    </span>
                   )}
                 </div>
 
@@ -773,7 +859,9 @@ const eliminarEvento = async () => {
                     disabled={guardando}
                   />
                   {erroresEdit.fecha_hora && (
-                    <span className="error-campo"><IconoError /> {erroresEdit.fecha_hora}</span>
+                    <span className="error-campo">
+                      <IconoError /> {erroresEdit.fecha_hora}
+                    </span>
                   )}
                 </div>
 
@@ -786,12 +874,18 @@ const eliminarEvento = async () => {
                     value={form.plazo_limite}
                     onChange={manejarCambioEdit}
                     min={new Date().toISOString().slice(0, 10)}
-                    max={form.fecha_hora ? form.fecha_hora.slice(0, 10) : undefined}
+                    max={
+                      form.fecha_hora
+                        ? form.fecha_hora.slice(0, 10)
+                        : undefined
+                    }
                     aria-invalid={!!erroresEdit.plazo_limite}
                     disabled={guardando}
                   />
                   {erroresEdit.plazo_limite && (
-                    <span className="error-campo"><IconoError /> {erroresEdit.plazo_limite}</span>
+                    <span className="error-campo">
+                      <IconoError /> {erroresEdit.plazo_limite}
+                    </span>
                   )}
                 </div>
 
@@ -807,80 +901,75 @@ const eliminarEvento = async () => {
                     disabled={guardando}
                   />
                   {erroresEdit.lugar && (
-                    <span className="error-campo"><IconoError /> {erroresEdit.lugar}</span>
+                    <span className="error-campo">
+                      <IconoError /> {erroresEdit.lugar}
+                    </span>
                   )}
                 </div>
               </div>
 
               <div className="evento-acciones">
-              <button type="submit" className="boton-edicion-violeta">
-                Guardar cambios
-              </button>
-
-              <button
-                type="button"
-                className="boton-edicion-violeta"
-                onClick={cancelarEdicion}
-              >
-                Cancelar
-              </button>
-            </div>
-
+                <button type="submit" className="boton-edicion-violeta">
+                  Guardar cambios
+                </button>
+                <button
+                  type="button"
+                  className="boton-edicion-violeta"
+                  onClick={cancelarEdicion}
+                >
+                  Cancelar
+                </button>
+              </div>
             </form>
           ) : (
             <>
               <div className="evento-header-top">
                 <h1>{evento.nombre}</h1>
                 <div className="evento-acciones">
-                <button
-                  type="button"
-                  className="boton-secundario"
-                  onClick={iniciarEdicion}
-                >
-                  <IconoLapiz /> Editar
-                </button>
-
-                <button
-                  type="button"
-                  className="boton-secundario"
-                  onClick={eliminarEvento}
-                  disabled={eliminandoEvento}
-                >
-                  {eliminandoEvento ? "Eliminando..." : "Eliminar evento"}
-                </button>
+                  <button
+                    type="button"
+                    className="boton-secundario"
+                    onClick={iniciarEdicion}
+                  >
+                    <IconoLapiz /> Editar
+                  </button>
+                  <button
+                    type="button"
+                    className="boton-secundario"
+                    onClick={eliminarEvento}
+                    disabled={eliminandoEvento}
+                  >
+                    {eliminandoEvento ? "Eliminando..." : "Eliminar evento"}
+                  </button>
+                </div>
               </div>
+
+              <div className="detalle-grid">
+                <div className="detalle-item">
+                  <span className="detalle-label">Tipo</span>
+                  <span className="detalle-valor">{evento.tipo}</span>
+                </div>
+                <div className="detalle-item">
+                  <span className="detalle-label">Lugar</span>
+                  <span className="detalle-valor">{evento.lugar}</span>
+                </div>
+                <div className="detalle-item">
+                  <span className="detalle-label">Cliente</span>
+                  <span className="detalle-valor">{evento.cliente}</span>
+                </div>
+                <div className="detalle-item">
+                  <span className="detalle-label">Plazo límite</span>
+                  <span className="detalle-valor">
+                    {formatearSoloFecha(evento.plazo_limite)}
+                  </span>
+                </div>
+                <div className="detalle-item detalle-fecha-evento">
+                  <span className="detalle-label">Fecha del evento</span>
+                  <span className="detalle-valor">
+                    {formatearFecha(evento.fecha_hora)}
+                  </span>
+                </div>
               </div>
-                      
-          <div className="detalle-grid">
-            <div className="detalle-item">
-              <span className="detalle-label">Tipo</span>
-              <span className="detalle-valor">{evento.tipo}</span>
-            </div>
-
-            <div className="detalle-item">
-              <span className="detalle-label">Lugar</span>
-              <span className="detalle-valor">{evento.lugar}</span>
-            </div>
-
-            <div className="detalle-item">
-              <span className="detalle-label">Cliente</span>
-              <span className="detalle-valor">{evento.cliente}</span>
-            </div>
-
-            <div className="detalle-item">
-              <span className="detalle-label">Plazo límite</span>
-              <span className="detalle-valor">
-                {formatearSoloFecha(evento.plazo_limite)}
-              </span>
-            </div>
-
-            <div className="detalle-item detalle-fecha-evento">
-              <span className="detalle-label">Fecha del evento</span>
-              <span className="detalle-valor">
-                {formatearFecha(evento.fecha_hora)}
-              </span>
-            </div>
-          </div>
             </>
           )}
         </div>
@@ -894,141 +983,130 @@ const eliminarEvento = async () => {
             : `${evento.subtareas.length} gestión(es) registrada(s), ordenadas por plazo.`}
         </p>
 
-        
+        <div className="nueva-subtarea-contenedor">
+          <div className="acciones-subtareas">
+            <Link to="/crear" className="boton-accion-subtarea">
+              <CalendarPlus size={18} />
+              <span>Crear otro evento</span>
+            </Link>
 
-              <div className="nueva-subtarea-contenedor">
-                <div className="acciones-subtareas">
-                  <Link to="/crear" className="boton-accion-subtarea">
-                    <CalendarPlus size={18} />
-                    <span>Crear otro evento</span>
-                  </Link>
-
-                  <button
-                    type="button"
-                    className="boton-accion-subtarea"
-                    onClick={() => {
-                      setMostrarFormularioSubtarea((anterior) => !anterior);
-                      setErrorNuevaSubtarea("");
-                    }}
-                  >
-                    <ListPlus size={18} />
-                    <span>
-                      {mostrarFormularioSubtarea
-                        ? "Cancelar"
-                        : "Agregar subtarea"}
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-
-          {mostrarFormularioSubtarea && (
-            <form
-              className="formulario-nueva-subtarea"
-              onSubmit={crearNuevaSubtarea}
+            <button
+              type="button"
+              className="boton-accion-subtarea"
+              onClick={() => {
+                setMostrarFormularioSubtarea((anterior) => !anterior);
+                setErrorNuevaSubtarea("");
+              }}
             >
-              <h3>Agregar subtarea</h3>
+              <ListPlus size={18} />
+              <span>
+                {mostrarFormularioSubtarea ? "Cancelar" : "Agregar subtarea"}
+              </span>
+            </button>
+          </div>
+        </div>
 
-              <div className="fila-nueva-subtarea">
-                <div className="campo-subtarea">
-                  <label htmlFor="nueva-subtarea-nombre">Nombre</label>
-                  <input
-                    id="nueva-subtarea-nombre"
-                    type="text"
-                    value={nuevaSubtarea.nombre}
-                    onChange={(e) =>
-                      setNuevaSubtarea((anterior) => ({
-                        ...anterior,
-                        nombre: e.target.value,
-                      }))
-                    }
-                    placeholder="Ej. Confirmar invitados"
-                    required
-                    disabled={guardandoNuevaSubtarea}
-                  />
-                </div>
+        {mostrarFormularioSubtarea && (
+          <form
+            className="formulario-nueva-subtarea"
+            onSubmit={crearNuevaSubtarea}
+          >
+            <h3>Agregar subtarea</h3>
 
-                <div className="campo-subtarea">
-                  <label htmlFor="nueva-subtarea-plazo">Plazo</label>
-                  <input
-                    id="nueva-subtarea-plazo"
-                    type="date"
-                    value={nuevaSubtarea.plazo}
-                    onChange={(e) =>
-                      setNuevaSubtarea((anterior) => ({
-                        ...anterior,
-                        plazo: e.target.value,
-                      }))
-                    }
-                    required
-                    disabled={guardandoNuevaSubtarea}
-                  />
-                </div>
-
-                <div className="campo-subtarea campo-horas">
-                  <label htmlFor="nueva-subtarea-horas">
-                    Horas estimadas
-                  </label>
-                  <input
-                    id="nueva-subtarea-horas"
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={nuevaSubtarea.horas_estimadas}
-                    onChange={(e) =>
-                      setNuevaSubtarea((anterior) => ({
-                        ...anterior,
-                        horas_estimadas: e.target.value,
-                      }))
-                    }
-                    required
-                    disabled={guardandoNuevaSubtarea}
-                  />
-                </div>
-              </div>
-
-              {errorNuevaSubtarea && (
-                <p className="alerta alerta-error" role="alert">
-                  <IconoError /> {errorNuevaSubtarea}
-                </p>
-              )}
-
-              <div className="acciones-nueva-subtarea">
-                <button
-                  type="submit"
-                  className="boton-principal"
+            <div className="fila-nueva-subtarea">
+              <div className="campo-subtarea">
+                <label htmlFor="nueva-subtarea-nombre">Nombre</label>
+                <input
+                  id="nueva-subtarea-nombre"
+                  type="text"
+                  value={nuevaSubtarea.nombre}
+                  onChange={(e) =>
+                    setNuevaSubtarea((anterior) => ({
+                      ...anterior,
+                      nombre: e.target.value,
+                    }))
+                  }
+                  placeholder="Ej. Confirmar invitados"
+                  required
                   disabled={guardandoNuevaSubtarea}
-                >
-                  {guardandoNuevaSubtarea
-                    ? "Guardando..."
-                    : "Agregar subtarea"}
-                </button>
+                />
               </div>
-              
-            </form>
-          )}
 
-          {evento.subtareas.length === 0 ? (
+              <div className="campo-subtarea">
+                <label htmlFor="nueva-subtarea-plazo">Plazo</label>
+                <input
+                  id="nueva-subtarea-plazo"
+                  type="date"
+                  value={nuevaSubtarea.plazo}
+                  onChange={(e) =>
+                    setNuevaSubtarea((anterior) => ({
+                      ...anterior,
+                      plazo: e.target.value,
+                    }))
+                  }
+                  required
+                  disabled={guardandoNuevaSubtarea}
+                />
+              </div>
 
-            <p className="estado-vacio">
-              Aún no hay gestiones logísticas para este evento.
-            </p>
-          ) : (
-            <div className="lista-gestiones">
-              {evento.subtareas.map((subtarea) => (
-                <div
-                  key={subtarea.id}
-                  className="gestion-tarjeta"
-                  data-estado={subtarea.estado}
-                >
-                  {subtareaEditando === subtarea.id ? (
-                    <form
-                      className="gestion-info"
-                      onSubmit={(e) => guardarSubtarea(e, subtarea.id)}
-                    >
-                      <h3>Editar subtarea</h3>
+              <div className="campo-subtarea campo-horas">
+                <label htmlFor="nueva-subtarea-horas">Horas estimadas</label>
+                <input
+                  id="nueva-subtarea-horas"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={nuevaSubtarea.horas_estimadas}
+                  onChange={(e) =>
+                    setNuevaSubtarea((anterior) => ({
+                      ...anterior,
+                      horas_estimadas: e.target.value,
+                    }))
+                  }
+                  required
+                  disabled={guardandoNuevaSubtarea}
+                />
+              </div>
+            </div>
 
-                      {errorSubtarea && (
+            {errorNuevaSubtarea && (
+              <p className="alerta alerta-error" role="alert">
+                <IconoError /> {errorNuevaSubtarea}
+              </p>
+            )}
+
+            <div className="acciones-nueva-subtarea">
+              <button
+                type="submit"
+                className="boton-principal"
+                disabled={guardandoNuevaSubtarea}
+              >
+                {guardandoNuevaSubtarea ? "Guardando..." : "Agregar subtarea"}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {evento.subtareas.length === 0 ? (
+          <p className="estado-vacio">
+            Aún no hay gestiones logísticas para este evento.
+          </p>
+        ) : (
+          <div className="lista-gestiones">
+            {evento.subtareas.map((subtarea) => (
+              <div
+                key={subtarea.id}
+                className="gestion-tarjeta"
+                data-estado={subtarea.estado}
+              >
+                {subtareaEditando === subtarea.id ? (
+                  <form
+                    className="gestion-info"
+                    onSubmit={(e) => guardarSubtarea(e, subtarea.id)}
+                  >
+                    <h3>Editar subtarea</h3>
+
+                    {errorSubtarea && (
                       <p
                         className="alerta alerta-error"
                         role="alert"
@@ -1038,111 +1116,258 @@ const eliminarEvento = async () => {
                       </p>
                     )}
 
-                      <div className="campo">
-                        <label htmlFor={`nombre-${subtarea.id}`}>Nombre</label>
-                        <input
-                          id={`nombre-${subtarea.id}`}
-                          name="nombre"
-                          value={formSubtarea.nombre}
-                          onChange={manejarCambioSubtarea}
-                          disabled={guardandoSubtarea}
-                          required
-                        />
-                      </div>
+                    <div className="campo">
+                      <label htmlFor={`nombre-${subtarea.id}`}>Nombre</label>
+                      <input
+                        id={`nombre-${subtarea.id}`}
+                        name="nombre"
+                        value={formSubtarea.nombre}
+                        onChange={manejarCambioSubtarea}
+                        disabled={guardandoSubtarea}
+                        required
+                      />
+                    </div>
 
-                      <div className="campo">
-                        <label htmlFor={`plazo-${subtarea.id}`}>Plazo</label>
-                        <input
-                          id={`plazo-${subtarea.id}`}
-                          type="date"
-                          name="plazo"
-                          value={formSubtarea.plazo}
-                          onChange={manejarCambioSubtarea}
-                          disabled={guardandoSubtarea}
-                          required
-                        />
-                      </div>
+                    <div className="campo">
+                      <label htmlFor={`plazo-${subtarea.id}`}>Plazo</label>
+                      <input
+                        id={`plazo-${subtarea.id}`}
+                        type="date"
+                        name="plazo"
+                        value={formSubtarea.plazo}
+                        onChange={manejarCambioSubtarea}
+                        disabled={guardandoSubtarea}
+                        required
+                      />
+                    </div>
 
-                      <div className="campo">
-                        <label htmlFor={`horas-${subtarea.id}`}>
-                          Horas estimadas
-                        </label>
-                        <input
-                          id={`horas-${subtarea.id}`}
-                          type="number"
-                          name="horas_estimadas"
-                          min="1"
-                          step="1"
-                          value={formSubtarea.horas_estimadas}
-                          onChange={manejarCambioSubtarea}
-                          disabled={guardandoSubtarea}
-                          required
-                        />
-                      </div>
+                    <div className="campo">
+                      <label htmlFor={`horas-${subtarea.id}`}>
+                        Horas estimadas
+                      </label>
+                      <input
+                        id={`horas-${subtarea.id}`}
+                        type="number"
+                        name="horas_estimadas"
+                        min="1"
+                        step="1"
+                        value={formSubtarea.horas_estimadas}
+                        onChange={manejarCambioSubtarea}
+                        disabled={guardandoSubtarea}
+                        required
+                      />
+                    </div>
 
-                      <div className="evento-acciones">
-                        <button
-                          type="submit"
-                          className="boton-principal"
-                          disabled={guardandoSubtarea}
-                        >
-                          {guardandoSubtarea ? "Guardando..." : "Guardar cambios"}
-                        </button>
-
-                        <button
-                          type="button"
-                          className="boton-secundario"
-                          onClick={cancelarEdicionSubtarea}
-                          disabled={guardandoSubtarea}
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <>
-                      <div className="gestion-info">
-                        <h3>{subtarea.nombre}</h3>
-
-                        <div className="gestion-meta">
-                          <span>
-                            Plazo: {formatearSoloFecha(subtarea.plazo)}
-                          </span>
-                          <span>{subtarea.horas_estimadas} h estimadas</span>
-                        </div>
-                      </div>
-
-                      <span
-                        className="badge-estado"
-                        data-estado={subtarea.estado}
+                    <div className="evento-acciones">
+                      <button
+                        type="submit"
+                        className="boton-principal"
+                        disabled={guardandoSubtarea}
                       >
-                        {ESTADO_LABEL[subtarea.estado] || subtarea.estado}
-                      </span>
-
-                      <div className="evento-acciones">
-                        <button
-                          type="button"
-                          className="boton-secundario"
-                          onClick={() => iniciarEdicionSubtarea(subtarea)}
-                        >
-                          <IconoLapiz /> Editar
-                        </button>
-
-                        <button
-                          type="button"
-                          className="boton-secundario"
-                          onClick={() => eliminarSubtarea(subtarea)}
-                        >
-                          Eliminar
-                        </button>
+                        {guardandoSubtarea
+                          ? "Guardando..."
+                          : "Guardar cambios"}
+                      </button>
+                      <button
+                        type="button"
+                        className="boton-secundario"
+                        onClick={cancelarEdicionSubtarea}
+                        disabled={guardandoSubtarea}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <div className="gestion-info">
+                      <h3>{subtarea.nombre}</h3>
+                      <div className="gestion-meta">
+                        <span>Plazo: {formatearSoloFecha(subtarea.plazo)}</span>
+                        <span>{subtarea.horas_estimadas} h estimadas</span>
+                        {subtarea.nota ? (
+                          <span style={{ display: "block", marginTop: "0.25rem" }}>
+                            Nota: {subtarea.nota}
+                          </span>
+                        ) : null}
                       </div>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                    </div>
+
+                    <span
+                      className="badge-estado"
+                      data-estado={subtarea.estado}
+                    >
+                      {ESTADO_LABEL[subtarea.estado] || subtarea.estado}
+                    </span>
+
+                    <div className="evento-acciones" style={{ flexWrap: "wrap" }}>
+                      {subtarea.estado !== "completada" &&
+                        subtarea.estado !== "ejecutada" && (
+                          <>
+                            <button
+                              type="button"
+                              className="boton-secundario"
+                              onClick={() => abrirHecha(subtarea)}
+                            >
+                              Hecha
+                            </button>
+                            <button
+                              type="button"
+                              className="boton-secundario"
+                              onClick={() => abrirPosponer(subtarea)}
+                            >
+                              Posponer
+                            </button>
+                          </>
+                        )}
+                      <button
+                        type="button"
+                        className="boton-secundario"
+                        onClick={() => iniciarEdicionSubtarea(subtarea)}
+                      >
+                        <IconoLapiz /> Editar
+                      </button>
+                      <button
+                        type="button"
+                        className="boton-secundario"
+                        onClick={() => eliminarSubtarea(subtarea)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </main>
+
+      {/* Modal Hecha / Posponer */}
+      {gestionAccion && (
+        <div
+          className="modal-fondo"
+          onMouseDown={cerrarAccion}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "1rem",
+          }}
+        >
+          <div
+            className="modal"
+            onMouseDown={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            style={{
+              background: "#fff",
+              borderRadius: "16px",
+              padding: "1.5rem",
+              maxWidth: "420px",
+              width: "100%",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "1rem",
+                marginBottom: "1rem",
+              }}
+            >
+              <div>
+                <h2 style={{ margin: 0, fontSize: "1.25rem" }}>
+                  {gestionAccion.tipo === "hecha"
+                    ? "Marcar como hecha"
+                    : "Posponer gestión"}
+                </h2>
+                <p style={{ margin: "0.35rem 0 0", color: "#64748b" }}>
+                  {gestionAccion.tipo === "hecha"
+                    ? `¿Confirmas que ya completaste "${gestionAccion.subtarea.nombre}"?`
+                    : `Vas a posponer "${gestionAccion.subtarea.nombre}". Puedes dejar una nota opcional.`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={cerrarAccion}
+                disabled={guardandoAccion}
+                aria-label="Cerrar"
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  fontSize: "1.25rem",
+                  cursor: "pointer",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={confirmarAccion} noValidate>
+              {gestionAccion.tipo === "posponer" && (
+                <div className="campo" style={{ marginBottom: "1rem" }}>
+                  <label htmlFor="nota-posponer-evento">Nota (opcional)</label>
+                  <textarea
+                    id="nota-posponer-evento"
+                    rows={3}
+                    value={notaPosponer}
+                    onChange={(e) => {
+                      setNotaPosponer(e.target.value);
+                      setMensajeAccion("");
+                    }}
+                    placeholder="Ej. Esperando confirmación del salón"
+                    disabled={guardandoAccion}
+                    maxLength={300}
+                    style={{
+                      width: "100%",
+                      borderRadius: "10px",
+                      padding: "0.6rem",
+                    }}
+                  />
+                  <span className="texto-ayuda-campo">
+                    Útil para recordar por qué la pospusiste (máx. 300
+                    caracteres).
+                  </span>
+                </div>
+              )}
+
+              {mensajeAccion && (
+                <p className="alerta alerta-error" role="alert">
+                  <IconoError /> {mensajeAccion}
+                </p>
+              )}
+
+              <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                <button
+                  type="submit"
+                  className="boton-principal"
+                  disabled={guardandoAccion}
+                  style={{ flex: 1 }}
+                >
+                  {guardandoAccion
+                    ? "Guardando..."
+                    : gestionAccion.tipo === "hecha"
+                      ? "Sí, marcar como hecha"
+                      : "Posponer gestión"}
+                </button>
+                <button
+                  type="button"
+                  className="boton-secundario"
+                  onClick={cerrarAccion}
+                  disabled={guardandoAccion}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
