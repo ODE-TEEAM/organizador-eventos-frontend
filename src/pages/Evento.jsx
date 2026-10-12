@@ -147,6 +147,7 @@ const [eliminandoEvento, setEliminandoEvento] = useState(false);
   // Si Crear.jsx redirigió aquí después de que alguna subtarea fallara al
   // guardarse, viene en location.state.erroresSubtareas.
   const erroresSubtareas = location.state?.erroresSubtareas;
+  console.log("Errores recibidos en Evento.jsx:", erroresSubtareas);
 
   useEffect(() => {
     const obtenerEvento = async () => {
@@ -583,20 +584,103 @@ const eliminarEvento = async () => {
       <Header />
 
       <main className="contenedor contenedor-estrecho pagina-formulario">
-        {erroresSubtareas && erroresSubtareas.length > 0 && (
-          <p className="alerta alerta-error">
+        
+        
+        
+      {erroresSubtareas?.length > 0 && (
+        <div className="alerta-limite-horas" role="alert">
+          <div className="alerta-limite-encabezado">
             <IconoError />
-            <span>
-              <strong>Atención:</strong> el evento se creó, pero {erroresSubtareas.length}{" "}
-              gestión(es) logística(s) no se pudieron guardar. Puedes volver a intentarlo.
-              <ul>
-                {erroresSubtareas.map((msg, i) => (
-                  <li key={i}>{msg}</li>
-                ))}
-              </ul>
-            </span>
-          </p>
-        )}
+            <div>
+              <strong>
+                El evento se creó, pero{" "}
+                {erroresSubtareas.length === 1
+                  ? "una gestión no pudo guardarse."
+                  : `${erroresSubtareas.length} gestiones no pudieron guardarse.`}
+              </strong>
+              <p>
+                Las gestiones que exceden tu límite diario no se guardaron.
+              </p>
+            </div>
+          </div>
+
+          {erroresSubtareas.map((error, i) => {
+            const detalle = error.detalle;
+
+            if (!detalle) {
+              return <p key={i}>{error.mensaje}</p>;
+            }
+
+            const fecha = detalle.fecha
+              ? new Date(`${detalle.fecha}T12:00:00`).toLocaleDateString(
+                  "es-CO",
+                  {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                  }
+                )
+              : "";
+
+            const exceso =
+              Number(detalle.horasTotales) - Number(detalle.limiteHoras);
+
+            return (
+              <div className="limite-detalle" key={i}>
+                <div className="limite-info">
+                  <p className="limite-nombre">
+                    La gestión <strong>«{detalle.nombre}»</strong> supera el límite
+                    diario.
+                  </p>
+
+                  {fecha && (
+                    <p className="limite-fecha">
+                      DETALLE DEL {fecha.toLocaleUpperCase("es-CO")}
+                    </p>
+                  )}
+
+                  <div className="limite-metricas">
+                    <div className="limite-metrica">
+                      <span>Horas asignadas</span>
+                      <strong>{detalle.horasExistentes} h</strong>
+                    </div>
+
+                    <div className="limite-metrica">
+                      <span>Esta gestión</span>
+                      <strong>+{detalle.horasNuevas} h</strong>
+                    </div>
+
+                    <div className="limite-metrica">
+                      <span>Total resultante</span>
+                      <strong>{detalle.horasTotales} h</strong>
+                    </div>
+
+                    <div className="limite-metrica limite-metrica-maximo">
+                      <span>Límite diario</span>
+                      <strong>{detalle.limiteHoras} h</strong>
+                    </div>
+                  </div>
+
+                  {exceso > 0 && (
+                    <p className="limite-exceso">
+                      Te excedes por {exceso} {exceso === 1 ? "hora" : "horas"}.
+                    </p>
+                  )}
+                </div>
+
+                <div className="limite-solucion">
+                  <strong>¿Cómo solucionarlo?</strong>
+                  <p>
+                    Reduce la duración de esta gestión o cambia su fecha a un día
+                    con disponibilidad.
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
 
         {exitoMsg && (
           <p className="alerta alerta-exito">
@@ -766,22 +850,37 @@ const eliminarEvento = async () => {
                 </button>
               </div>
               </div>
-              <dl className="detalle-grid">
-                <dt>Tipo</dt>
-                <dd>{evento.tipo}</dd>
+                      
+          <div className="detalle-grid">
+            <div className="detalle-item">
+              <span className="detalle-label">Tipo</span>
+              <span className="detalle-valor">{evento.tipo}</span>
+            </div>
 
-                <dt>Cliente</dt>
-                <dd>{evento.cliente}</dd>
+            <div className="detalle-item">
+              <span className="detalle-label">Lugar</span>
+              <span className="detalle-valor">{evento.lugar}</span>
+            </div>
 
-                <dt>Fecha del evento</dt>
-                <dd>{formatearFecha(evento.fecha_hora)}</dd>
+            <div className="detalle-item">
+              <span className="detalle-label">Cliente</span>
+              <span className="detalle-valor">{evento.cliente}</span>
+            </div>
 
-                <dt>Lugar</dt>
-                <dd>{evento.lugar}</dd>
+            <div className="detalle-item">
+              <span className="detalle-label">Plazo límite</span>
+              <span className="detalle-valor">
+                {formatearSoloFecha(evento.plazo_limite)}
+              </span>
+            </div>
 
-                <dt>Plazo límite</dt>
-                <dd>{formatearSoloFecha(evento.plazo_limite)}</dd>
-              </dl>
+            <div className="detalle-item detalle-fecha-evento">
+              <span className="detalle-label">Fecha del evento</span>
+              <span className="detalle-valor">
+                {formatearFecha(evento.fecha_hora)}
+              </span>
+            </div>
+          </div>
             </>
           )}
         </div>

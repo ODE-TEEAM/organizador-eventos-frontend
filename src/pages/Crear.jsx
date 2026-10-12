@@ -339,24 +339,66 @@ function Crear() {
     setSubtareas(subtareas.filter((_, i) => i !== index));
   };
 
-  // Crea la subtarea en el backend: POST /api/eventos/:id/subtareas/
-  const crearSubtareaEnBackend = async (eventoId, subtarea) => {
-    const respuesta = await fetch(`${API_URL}/eventos/${eventoId}/subtareas/`, {
-      method: "POST",
-      headers: getAuthHeaders(), // ← envía el token
-      body: JSON.stringify(subtarea),
-    });
+    // Crea la gestión logística en el backend.
+const crearSubtareaEnBackend = async (eventoId, subtarea) => {
+  const respuesta = await fetch(`${API_URL}/eventos/${eventoId}/subtareas/`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(subtarea),
+  });
 
-    const datos = await respuesta.json();
+  const datos = await respuesta.json();
+  console.log("Respuesta del backend al crear subtarea:", datos);
+console.log("¿Es conflicto?", datos.conflicto);
 
-    if (!respuesta.ok) {
-      throw new Error(
-        mensajeDeError(datos, `No se pudo guardar la gestión "${subtarea.nombre}":`)
-      );
+  if (!respuesta.ok) {
+    // Mensaje amigable para conflictos con el límite diario.
+    if (datos.conflicto && datos.mensaje) {
+      const fecha = datos.fecha
+        ? formatearFechaVisual(datos.fecha)
+        : "";
+
+      const detalles = [
+        `No se pudo guardar la gestión "${subtarea.nombre}".`,
+        datos.mensaje,
+        fecha ? `Fecha: ${fecha}.` : "",
+        datos.horas_existentes !== undefined
+          ? `Horas que ya tenías asignadas: ${datos.horas_existentes} h.`
+          : "",
+        datos.horas_nuevas !== undefined
+          ? `Horas de esta gestión: ${datos.horas_nuevas} h.`
+          : "",
+        datos.horas_totales !== undefined
+          ? `Total resultante: ${datos.horas_totales} h.`
+          : "",
+        datos.limite_horas !== undefined
+          ? `Tu límite diario es de ${datos.limite_horas} h.`
+          : "",
+      ].filter(Boolean);
+
+      const error = new Error(datos.mensaje);
+      error.detalleGestion = {
+        nombre: subtarea.nombre,
+        fecha: datos.fecha,
+        horasExistentes: datos.horas_existentes,
+        horasNuevas: datos.horas_nuevas,
+        horasTotales: datos.horas_totales,
+        limiteHoras: datos.limite_horas,
+      };
+      throw error;
+      
     }
 
-    return datos;
-  };
+    throw new Error(
+      mensajeDeError(
+        datos,
+        `No se pudo guardar la gestión "${subtarea.nombre}":`
+      )
+    );
+  }
+
+  return datos;
+};
 
   const crearEvento = async (e) => {
     e.preventDefault();
@@ -388,6 +430,8 @@ function Crear() {
       });
 
       const datos = await respuesta.json();
+      console.log("Respuesta del backend al crear subtarea:", datos);
+console.log("¿Es conflicto?", datos.conflicto);
 
       if (!respuesta.ok) {
         // Si el backend rechaza el evento por superar el límite de horas.
@@ -424,7 +468,10 @@ function Crear() {
             await crearSubtareaEnBackend(eventoId, subtarea);
           } catch (err) {
             console.error(err);
-            erroresSubtareas.push(err.message);
+            erroresSubtareas.push({
+              mensaje: err.message,
+              detalle: err.detalleGestion || null,
+            });
           }
         }
       }
@@ -455,7 +502,6 @@ function Crear() {
         </p>
 
         
-
         <form onSubmit={crearEvento} noValidate>
           <div className="paso-encabezado">
             <span className="paso-numero">1</span>

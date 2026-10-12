@@ -302,27 +302,51 @@ hr {
   font-weight: 800;
 }
 
+
+/* ---- Detalle del evento (Evento.jsx) ---- */
+
 .detalle-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1.1rem 1.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem 1.5rem;
 }
 
-.detalle-grid dt {
+.detalle-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.detalle-label {
   color: var(--texto-tenue);
   font-size: 0.74rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: 0.25rem;
 }
 
-.detalle-grid dd {
-  margin: 0;
+.detalle-valor {
   color: var(--tinta);
   font-weight: 700;
   font-size: 0.96rem;
+  overflow-wrap: anywhere;
 }
+
+/* Adaptación para pantallas pequeñas */
+@media (max-width: 650px) {
+  .detalle-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .detalle-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 
 /* ---- Modo edición del evento ---- */
 .evento-header-top {
@@ -665,6 +689,137 @@ hr {
   outline: 3px solid var(--violeta-borde);
   outline-offset: 3px;
 }
+
+/* Alerta compacta por límite diario */
+.alerta-limite-horas {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 1.25rem;
+  padding: 1.15rem 1.35rem;
+  border: 1px solid rgba(239, 83, 80, 0.45);
+  border-left: 4px solid #ef5350;
+  border-radius: 12px;
+  background: rgba(239, 83, 80, 0.07);
+  color: #ffffff;
+}
+
+
+.alerta-limite-horas {
+  color: #ffffff;
+}
+
+.alerta-limite-horas strong,
+.alerta-limite-horas p,
+.alerta-limite-horas span,
+.alerta-limite-horas .limite-nombre,
+.alerta-limite-horas .limite-fecha,
+.alerta-limite-horas .limite-exceso,
+.alerta-limite-horas .limite-solucion {
+  color: #ffffff;
+}
+
+.alerta-limite-encabezado {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.alerta-limite-encabezado > div {
+  min-width: 0;
+}
+
+.alerta-limite-encabezado p {
+  margin: 0.25rem 0 0;
+  opacity: 0.8;
+  font-size: 0.92rem;
+}
+
+.limite-detalle {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr);
+  gap: 1.25rem;
+  align-items: stretch;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(127, 127, 127, 0.25);
+}
+
+.limite-nombre {
+  margin: 0 0 0.6rem;
+}
+
+.limite-fecha {
+  margin: 0 0 0.75rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+
+.limite-metricas {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.limite-metrica {
+  min-width: 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(127, 127, 127, 0.2);
+  border-radius: 8px;
+  background: rgba(127, 127, 127, 0.06);
+}
+
+.limite-metrica span {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.limite-metrica strong {
+  font-size: 1.3rem;
+  line-height: 1.2;
+}
+
+.limite-metrica-maximo {
+  border-color: rgba(239, 83, 80, 0.35);
+}
+
+.limite-exceso {
+  margin: 0.65rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.limite-solucion {
+  align-self: stretch;
+  padding: 1rem;
+  border-radius: 9px;
+  background: rgba(127, 127, 127, 0.1);
+}
+
+.limite-solucion strong {
+  display: block;
+  margin-bottom: 0.45rem;
+}
+
+.limite-solucion p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .limite-detalle {
+    grid-template-columns: 1fr;
+  }
+
+  .limite-metricas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 
 /* Adaptación para pantallas pequeñas */
 @media (max-width: 700px) {
