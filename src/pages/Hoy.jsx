@@ -43,18 +43,16 @@ export default function Hoy() {
   const [vencidas, setVencidas] = useState([]);
   const [paraHoy, setParaHoy] = useState([]);
   const [proximas, setProximas] = useState([]);
-  const [estado, setEstado] = useState("cargando"); // cargando | listo | error | vacio
+  const [estado, setEstado] = useState("cargando");
   const [mensajeError, setMensajeError] = useState("");
 
-  // Reprogramar
   const [gestionEditando, setGestionEditando] = useState(null);
   const [nuevaFecha, setNuevaFecha] = useState("");
   const [guardandoReprogramacion, setGuardandoReprogramacion] = useState(false);
   const [mensajeReprogramacion, setMensajeReprogramacion] = useState("");
   const [fechaSugerida, setFechaSugerida] = useState("");
 
-  // Marcar Hecha / Posponer (C1 Sprint 4)
-  const [gestionAccion, setGestionAccion] = useState(null); // { gestion, tipo: 'hecha' | 'posponer' }
+  const [gestionAccion, setGestionAccion] = useState(null);
   const [notaPosponer, setNotaPosponer] = useState("");
   const [guardandoAccion, setGuardandoAccion] = useState(false);
   const [mensajeAccion, setMensajeAccion] = useState("");
@@ -73,7 +71,7 @@ export default function Hoy() {
       });
 
       if (respuesta.status === 401) {
-        setMensajeError("Tu sesión expiró. Vuelve a iniciar sesión para continuar.");
+        setMensajeError("Tu sesión expiró. Vuelve a iniciar sesión para ver tus gestiones.");
         setEstado("error");
         return;
       }
@@ -99,7 +97,7 @@ export default function Hoy() {
     } catch (err) {
       console.error(err);
       setMensajeError(
-        "No pudimos cargar tus gestiones. Verifica que el backend esté encendido e intenta de nuevo."
+        "No pudimos cargar tus gestiones. Revisa tu conexión e intenta de nuevo."
       );
       setEstado("error");
     }
@@ -109,7 +107,6 @@ export default function Hoy() {
     cargarGestiones();
   }, []);
 
-  // Escape cierra modales
   useEffect(() => {
     const tecla = (e) => {
       if (e.key !== "Escape") return;
@@ -132,7 +129,6 @@ export default function Hoy() {
     return () => window.removeEventListener("keydown", tecla);
   }, [gestionEditando, gestionAccion, guardandoReprogramacion, guardandoAccion]);
 
-  // ---- Reprogramar ----
   const abrirReprogramacion = (gestion) => {
     setGestionEditando(gestion);
     setNuevaFecha(gestion.fecha || "");
@@ -152,7 +148,7 @@ export default function Hoy() {
     e.preventDefault();
 
     if (!gestionEditando || !nuevaFecha) {
-      setMensajeReprogramacion("Selecciona una nueva fecha.");
+      setMensajeReprogramacion("Elige la nueva fecha de esta gestión.");
       return;
     }
 
@@ -174,7 +170,7 @@ export default function Hoy() {
       if (respuesta.status === 409 && datos?.conflicto) {
         setMensajeReprogramacion(
           datos.mensaje ||
-            `Quedarías con ${datos.horas_planificadas} horas planificadas (límite ${datos.limite_horas} horas).`
+            `Ese día te quedarías con ${datos.horas_planificadas} h (tu límite es ${datos.limite_horas} h).`
         );
         setFechaSugerida(datos.fecha_sugerida || "");
         setGuardandoReprogramacion(false);
@@ -183,7 +179,7 @@ export default function Hoy() {
 
       if (!respuesta.ok) {
         setMensajeReprogramacion(
-          mensajeDeError(datos, "No pudimos reprogramar la gestión.")
+          mensajeDeError(datos, "No pudimos cambiar la fecha. Intenta de nuevo.")
         );
         setGuardandoReprogramacion(false);
         return;
@@ -192,12 +188,14 @@ export default function Hoy() {
       setGestionEditando(null);
       setNuevaFecha("");
       setMensajeReprogramacion("");
-      setExitoAccion("Gestión reprogramada correctamente.");
+      setExitoAccion(
+        `Nueva fecha guardada para "${gestionEditando.titulo}". Actualizamos lo urgente de hoy.`
+      );
       await cargarGestiones();
     } catch (err) {
       console.error(err);
       setMensajeReprogramacion(
-        "No pudimos conectar con el servidor. Intenta nuevamente."
+        "No pudimos guardar la fecha. Intenta de nuevo en unos segundos."
       );
     }
 
@@ -224,29 +222,32 @@ export default function Hoy() {
 
       if (!respuesta.ok) {
         setMensajeReprogramacion(
-          mensajeDeError(datos, "No pudimos mover la gestión a la fecha sugerida.")
+          mensajeDeError(datos, "No pudimos mover la gestión a esa fecha.")
         );
         setGuardandoReprogramacion(false);
         return;
       }
 
+      const titulo = gestionEditando.titulo;
+      const fechaTexto = formatearFechaLarga(fechaSugerida);
       setGestionEditando(null);
       setNuevaFecha("");
       setMensajeReprogramacion("");
       setFechaSugerida("");
-      setExitoAccion("Gestión movida a la fecha sugerida.");
+      setExitoAccion(
+        `"${titulo}" quedó para el ${fechaTexto}. Actualizamos lo urgente de hoy.`
+      );
       await cargarGestiones();
     } catch (err) {
       console.error(err);
       setMensajeReprogramacion(
-        "No pudimos conectar con el servidor. Intenta nuevamente."
+        "No pudimos guardar la fecha. Intenta de nuevo en unos segundos."
       );
     }
 
     setGuardandoReprogramacion(false);
   };
 
-  // ---- C1: Hecha / Posponer ----
   const abrirHecha = (gestion) => {
     setGestionAccion({ gestion, tipo: "hecha" });
     setNotaPosponer("");
@@ -274,12 +275,13 @@ export default function Hoy() {
     setGuardandoAccion(true);
     setMensajeAccion("");
 
+    const nota = (notaPosponer || "").trim();
     const body =
       tipo === "hecha"
         ? { estado: "completada" }
         : {
             estado: "pospuesta",
-            nota: (notaPosponer || "").trim(),
+            ...(nota ? { nota } : {}),
           };
 
     try {
@@ -296,8 +298,8 @@ export default function Hoy() {
           mensajeDeError(
             datos,
             tipo === "hecha"
-              ? "No pudimos marcar la gestión como hecha. Intenta de nuevo."
-              : "No pudimos posponer la gestión. Intenta de nuevo."
+              ? "No pudimos marcarla como hecha. Intenta de nuevo."
+              : "No pudimos posponerla. Intenta de nuevo."
           )
         );
         setGuardandoAccion(false);
@@ -309,14 +311,16 @@ export default function Hoy() {
       setMensajeAccion("");
       setExitoAccion(
         tipo === "hecha"
-          ? `Listo. "${gestion.titulo}" quedó marcada como hecha.`
-          : `Gestión pospuesta${(notaPosponer || "").trim() ? " y nota guardada" : ""}.`
+          ? `Listo. "${gestion.titulo}" quedó hecha y salió de lo urgente de hoy.`
+          : nota
+            ? `Pospuesta. "${gestion.titulo}" salió de lo urgente y guardamos tu nota.`
+            : `Pospuesta. "${gestion.titulo}" salió de lo urgente de hoy.`
       );
       await cargarGestiones();
     } catch (err) {
       console.error(err);
       setMensajeAccion(
-        "No pudimos conectar con el servidor. Verifica que el backend esté encendido."
+        "No pudimos guardar el cambio. Intenta de nuevo en unos segundos."
       );
     }
 
@@ -335,8 +339,8 @@ export default function Hoy() {
           </span>
           <h1 className="hero-hoy-titulo">Hola, {nombre}</h1>
           <p className="hero-hoy-sub">
-            Estas son las gestiones que necesitan tu atención, ordenadas de la
-            más urgente a la más lejana.
+            Estas son las gestiones que necesitan tu atención, de la más urgente
+            a la más lejana.
           </p>
           <div className="hero-hoy-acciones">
             <Link to="/crear" className="btn btn-lima">
@@ -385,7 +389,7 @@ export default function Hoy() {
               style={{ marginLeft: "0.75rem" }}
               onClick={() => setExitoAccion("")}
             >
-              Cerrar
+              Entendido
             </button>
           </p>
         )}
@@ -403,8 +407,7 @@ export default function Hoy() {
               Después las <strong>próximas</strong>.
             </li>
             <li>
-              Dentro de cada grupo se ordenan por fecha y, si empatan, por menor
-              esfuerzo estimado.
+              Si coinciden en fecha, va primero la de menor esfuerzo (menos horas).
             </li>
           </ol>
         </details>
@@ -412,7 +415,7 @@ export default function Hoy() {
         {estado === "cargando" && (
           <div className="estado-caja">
             <div className="spinner spinner-grande" />
-            <p className="estado-caja-texto">Cargando tus gestiones del día...</p>
+            <p className="estado-caja-texto">Revisando lo urgente de hoy...</p>
           </div>
         )}
 
@@ -422,7 +425,7 @@ export default function Hoy() {
               {mensajeError}
             </p>
             <button onClick={cargarGestiones} className="btn btn-primario">
-              Reintentar
+              Intentar de nuevo
             </button>
           </div>
         )}
@@ -430,10 +433,10 @@ export default function Hoy() {
         {estado === "vacio" && (
           <div className="estado-caja">
             <AvatarAnimal semilla={email} size={84} />
-            <p className="estado-caja-titulo">Todo bajo control por ahora</p>
+            <p className="estado-caja-titulo">Hoy no tienes gestiones urgentes</p>
             <p className="estado-caja-texto">
-              No tienes gestiones pendientes. Crea un evento y agrega gestiones
-              logísticas para verlas organizadas aquí.
+              No hay vencidas, ni de hoy, ni próximas. Crea un evento y agrega
+              gestiones (catering, salón, invitaciones) para verlas aquí.
             </p>
             <Link to="/crear" className="btn btn-primario">
               + Crear evento
@@ -487,7 +490,7 @@ export default function Hoy() {
               </h2>
               {paraHoy.length === 0 ? (
                 <p className="texto-ayuda-campo" style={{ padding: "0.4rem 0" }}>
-                  No tienes gestiones para hoy.
+                  Nada vence hoy. Las próximas siguen en su fecha.
                 </p>
               ) : (
                 <div className="gestion-lista">
@@ -537,7 +540,6 @@ export default function Hoy() {
         )}
       </main>
 
-      {/* Modal Reprogramar */}
       {gestionEditando && (
         <div className="modal-fondo" onMouseDown={cerrarReprogramacion}>
           <div
@@ -550,10 +552,10 @@ export default function Hoy() {
             <div className="modal-cabecera">
               <div>
                 <h2 id="reprogramar-titulo" className="modal-titulo">
-                  Reprogramar gestión
+                  Cambiar la fecha
                 </h2>
                 <p className="modal-subtitulo">
-                  Cambia la fecha objetivo de &quot;{gestionEditando.titulo}&quot;.
+                  Nueva fecha para &quot;{gestionEditando.titulo}&quot;.
                 </p>
               </div>
               <button
@@ -585,8 +587,7 @@ export default function Hoy() {
                   aria-invalid={!!mensajeReprogramacion}
                 />
                 <span className="texto-ayuda-campo">
-                  Elige una fecha de hoy en adelante, dentro de los próximos 10
-                  años.
+                  Hoy o más adelante, dentro de los próximos 10 años.
                 </span>
                 {mensajeReprogramacion && (
                   <span className="error-campo">{mensajeReprogramacion}</span>
@@ -604,11 +605,12 @@ export default function Hoy() {
                   }}
                 >
                   <strong style={{ display: "block", marginBottom: "0.35rem" }}>
-                    Tenemos una fecha disponible
+                    Ese día ya llegaste al límite de horas
                   </strong>
                   <p style={{ margin: "0 0 0.9rem" }}>
-                    Puedes mover esta gestión al{" "}
-                    <strong>{formatearFechaLarga(fechaSugerida)}</strong>.
+                    Puedes dejarla el{" "}
+                    <strong>{formatearFechaLarga(fechaSugerida)}</strong>, que
+                    sí tiene espacio.
                   </p>
                   <button
                     type="button"
@@ -617,7 +619,7 @@ export default function Hoy() {
                     disabled={guardandoReprogramacion}
                   >
                     {guardandoReprogramacion
-                      ? "Moviendo..."
+                      ? "Guardando..."
                       : `Mover al ${formatearFechaLarga(fechaSugerida)}`}
                   </button>
                 </div>
@@ -628,14 +630,13 @@ export default function Hoy() {
                 className="btn btn-primario btn-ancho"
                 disabled={guardandoReprogramacion}
               >
-                {guardandoReprogramacion ? "Guardando..." : "Guardar nueva fecha"}
+                {guardandoReprogramacion ? "Guardando..." : "Guardar fecha"}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Modal Hecha / Posponer (C1) */}
       {gestionAccion && (
         <div className="modal-fondo" onMouseDown={cerrarAccion}>
           <div
@@ -654,8 +655,8 @@ export default function Hoy() {
                 </h2>
                 <p className="modal-subtitulo">
                   {gestionAccion.tipo === "hecha"
-                    ? `¿Confirmas que ya completaste "${gestionAccion.gestion.titulo}"?`
-                    : `Vas a posponer "${gestionAccion.gestion.titulo}". Puedes dejar una nota opcional.`}
+                    ? `¿Ya terminaste "${gestionAccion.gestion.titulo}"? Al confirmar, deja de aparecer en lo urgente de hoy y suma al avance del evento.`
+                    : `Vas a posponer "${gestionAccion.gestion.titulo}". Dejará de aparecer como urgente. Puedes anotar por qué.`}
                 </p>
               </div>
               <button
@@ -672,9 +673,7 @@ export default function Hoy() {
             <form onSubmit={confirmarAccion} noValidate>
               {gestionAccion.tipo === "posponer" && (
                 <div className="campo">
-                  <label htmlFor="nota-posponer">
-                    Nota (opcional)
-                  </label>
+                  <label htmlFor="nota-posponer">Nota (opcional)</label>
                   <textarea
                     id="nota-posponer"
                     rows={3}
@@ -688,7 +687,7 @@ export default function Hoy() {
                     maxLength={300}
                   />
                   <span className="texto-ayuda-campo">
-                    Útil para recordar por qué la pospusiste (máx. 300 caracteres).
+                    Queda visible en el evento para que recuerdes el motivo (máx. 300 caracteres).
                   </span>
                 </div>
               )}
@@ -709,8 +708,8 @@ export default function Hoy() {
                   {guardandoAccion
                     ? "Guardando..."
                     : gestionAccion.tipo === "hecha"
-                      ? "Sí, marcar como hecha"
-                      : "Posponer gestión"}
+                      ? "Sí, ya está hecha"
+                      : "Posponer"}
                 </button>
                 <button
                   type="button"
@@ -743,17 +742,25 @@ function GestionCard({ gestion, tipo, onReprogramar, onHecha, onPosponer }) {
         <span className="gestion-card-meta">
           <span>{formatearFechaCorta(gestion.fecha)}</span>
           <span>{gestion.horas_estimadas} h estimadas</span>
+          {gestion.nota ? <span>Nota: {gestion.nota}</span> : null}
         </span>
       </Link>
 
       <span className={`badge ${config.badge}`}>{config.label}</span>
 
-      <div className="gestion-card-acciones" style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
+      <div
+        className="gestion-card-acciones"
+        style={{
+          display: "flex",
+          gap: "0.4rem",
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
         <button
           type="button"
           className="btn btn-fantasma"
           onClick={() => onHecha(gestion)}
-          title="Marcar como hecha"
         >
           Hecha
         </button>
@@ -761,7 +768,6 @@ function GestionCard({ gestion, tipo, onReprogramar, onHecha, onPosponer }) {
           type="button"
           className="btn btn-fantasma"
           onClick={() => onPosponer(gestion)}
-          title="Posponer con nota"
         >
           Posponer
         </button>

@@ -19,10 +19,10 @@ const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 const ESTADO_LABEL = {
   PENDIENTE: "Pendiente",
   pendiente: "Pendiente",
-  EJECUTADA: "Ejecutada",
-  ejecutada: "Ejecutada",
-  completada: "Completada",
-  COMPLETADA: "Completada",
+  EJECUTADA: "Hecha",
+  ejecutada: "Hecha",
+  completada: "Hecha",
+  COMPLETADA: "Hecha",
   POSPUESTA: "Pospuesta",
   pospuesta: "Pospuesta",
 };
@@ -149,7 +149,6 @@ function Evento() {
   const [errorAccion, setErrorAccion] = useState("");
   const [eliminandoEvento, setEliminandoEvento] = useState(false);
 
-  // C1 Sprint 4: Hecha / Posponer
   const [gestionAccion, setGestionAccion] = useState(null);
   const [notaPosponer, setNotaPosponer] = useState("");
   const [guardandoAccion, setGuardandoAccion] = useState(false);
@@ -168,7 +167,7 @@ function Evento() {
 
         if (!respuesta.ok) {
           setError(
-            "No encontramos este evento. Puede que haya sido eliminado o que no sea tuyo."
+            "No encontramos este evento. Puede que ya no exista o que no sea tuyo."
           );
           return;
         }
@@ -177,7 +176,7 @@ function Evento() {
       } catch (err) {
         console.error(err);
         setError(
-          "No pudimos conectar con el backend. Verifica que esté encendido e intenta de nuevo."
+          "No pudimos cargar el evento. Revisa tu conexión e intenta de nuevo."
         );
       }
     };
@@ -304,12 +303,12 @@ function Evento() {
 
       setEvento(datos);
       setEditando(false);
-      setExitoMsg("¡Listo! Tus cambios se guardaron correctamente.");
+      setExitoMsg("Listo. Guardamos los cambios del evento.");
     } catch (err) {
       console.error(err);
       setErroresEdit({
         general:
-          "No pudimos conectar con el servidor. Intenta de nuevo en unos segundos.",
+          "No pudimos guardar el cambio. Intenta de nuevo en unos segundos.",
       });
     }
     setGuardando(false);
@@ -390,7 +389,7 @@ function Evento() {
         setErrorSubtarea(
           normalizados.general ||
             resumenErrores(normalizados) ||
-            "No se pudo guardar la subtarea. Revisa los datos."
+            "No pudimos guardar la gestión. Revisa los datos."
         );
         setGuardandoSubtarea(false);
         return;
@@ -404,10 +403,12 @@ function Evento() {
       }));
 
       setSubtareaEditando(null);
-      setExitoMsg("La subtarea se actualizó correctamente.");
+      setExitoMsg("La gestión se actualizó.");
     } catch (err) {
       console.error(err);
-      setErrorSubtarea("No se pudo conectar con el servidor.");
+      setErrorSubtarea(
+        "No pudimos guardar el cambio. Intenta de nuevo en unos segundos."
+      );
     } finally {
       setGuardandoSubtarea(false);
     }
@@ -422,7 +423,9 @@ function Evento() {
     const horas = Number(nuevaSubtarea.horas_estimadas);
 
     if (!nombre || !plazo || !Number.isFinite(horas) || horas <= 0) {
-      setErrorNuevaSubtarea("Completa todos los campos con valores válidos.");
+      setErrorNuevaSubtarea(
+        "Completa nombre, fecha y horas para agregar la gestión."
+      );
       return;
     }
 
@@ -453,7 +456,7 @@ function Evento() {
               .flat()
               .filter((valor) => typeof valor === "string")
               .join(" ") ||
-            "No fue posible crear la subtarea."
+            "No pudimos agregar la gestión."
         );
         return;
       }
@@ -472,9 +475,11 @@ function Evento() {
       });
 
       setMostrarFormularioSubtarea(false);
-      setExitoMsg("¡Subtarea agregada correctamente!");
+      setExitoMsg("Gestión agregada al plan.");
     } catch {
-      setErrorNuevaSubtarea("No se pudo conectar con el servidor.");
+      setErrorNuevaSubtarea(
+        "No pudimos guardar el cambio. Intenta de nuevo en unos segundos."
+      );
     } finally {
       setGuardandoNuevaSubtarea(false);
     }
@@ -482,7 +487,7 @@ function Evento() {
 
   const eliminarSubtarea = async (subtarea) => {
     const confirmar = window.confirm(
-      `¿Seguro que quieres eliminar "${subtarea.nombre}"? Esta acción no se puede deshacer.`
+      `¿Seguro que quieres quitar "${subtarea.nombre}" del plan? Esta acción no se puede deshacer.`
     );
 
     if (!confirmar) return;
@@ -497,7 +502,7 @@ function Evento() {
 
       if (!respuesta.ok) {
         const datos = await respuesta.json().catch(() => ({}));
-        setErrorAccion(datos.error || "No se pudo eliminar la subtarea.");
+        setErrorAccion(datos.error || "No pudimos quitar esa gestión.");
         return;
       }
 
@@ -510,16 +515,18 @@ function Evento() {
         setSubtareaEditando(null);
       }
 
-      setExitoMsg("La subtarea se eliminó correctamente.");
+      setExitoMsg("Quitamos esa gestión del plan.");
     } catch (err) {
       console.error(err);
-      setErrorAccion("No se pudo conectar con el servidor.");
+      setErrorAccion(
+        "No pudimos guardar el cambio. Intenta de nuevo en unos segundos."
+      );
     }
   };
 
   const eliminarEvento = async () => {
     const confirmar = window.confirm(
-      `¿Seguro que quieres eliminar "${evento.nombre}" y todas sus subtareas? Esta acción no se puede deshacer.`
+      `¿Seguro que quieres eliminar "${evento.nombre}" y todas sus gestiones? Esta acción no se puede deshacer.`
     );
 
     if (!confirmar) return;
@@ -535,25 +542,26 @@ function Evento() {
 
       if (!respuesta.ok) {
         const datos = await respuesta.json().catch(() => ({}));
-        setErrorAccion(datos.error || "No se pudo eliminar el evento.");
+        setErrorAccion(datos.error || "No pudimos eliminar el evento.");
         setEliminandoEvento(false);
         return;
       }
 
       navigate("/eventos", {
         state: {
-          mensaje: "El evento y sus subtareas se eliminaron correctamente.",
+          mensaje: "Eliminamos el evento y sus gestiones.",
         },
       });
     } catch (err) {
       console.error(err);
-      setErrorAccion("No se pudo conectar con el servidor.");
+      setErrorAccion(
+        "No pudimos guardar el cambio. Intenta de nuevo en unos segundos."
+      );
     } finally {
       setEliminandoEvento(false);
     }
   };
 
-  // ---- C1: Hecha / Posponer ----
   const abrirHecha = (subtarea) => {
     setGestionAccion({ subtarea, tipo: "hecha" });
     setNotaPosponer("");
@@ -611,8 +619,8 @@ function Evento() {
                 ? datos.estado.join(" ")
                 : null) ||
             (tipo === "hecha"
-              ? "No pudimos marcar la gestión como hecha. Intenta de nuevo."
-              : "No pudimos posponer la gestión. Intenta de nuevo.")
+              ? "No pudimos marcarla como hecha. Intenta de nuevo."
+              : "No pudimos posponerla. Intenta de nuevo.")
         );
         setGuardandoAccion(false);
         return;
@@ -630,15 +638,15 @@ function Evento() {
       setMensajeAccion("");
       setExitoMsg(
         tipo === "hecha"
-          ? `Listo. "${subtarea.nombre}" quedó marcada como hecha.`
-          : `Gestión pospuesta${
-              (notaPosponer || "").trim() ? " y nota guardada" : ""
-            }.`
+          ? `Listo. "${subtarea.nombre}" quedó hecha y suma al avance del evento.`
+          : (notaPosponer || "").trim()
+            ? `Pospuesta. "${subtarea.nombre}" quedó con nota.`
+            : `Pospuesta. "${subtarea.nombre}" ya no cuenta como pendiente.`
       );
     } catch (err) {
       console.error(err);
       setMensajeAccion(
-        "No pudimos conectar con el servidor. Verifica que el backend esté encendido."
+        "No pudimos guardar el cambio. Intenta de nuevo en unos segundos."
       );
     }
 
@@ -667,7 +675,7 @@ function Evento() {
         <Header />
         <main className="contenedor contenedor-estrecho pagina-formulario">
           <p className="alerta alerta-carga">
-            <span className="spinner" /> Cargando evento...
+            <span className="spinner" /> Cargando el evento...
           </p>
         </main>
       </div>
@@ -795,7 +803,7 @@ function Evento() {
                 <h1>Editar evento</h1>
               </div>
               <p className="texto-ayuda" style={{ marginBottom: "1.1rem" }}>
-                Corrige lo que necesites y guarda los cambios. Todo es editable.
+                Corrige lo que necesites y guarda los cambios.
               </p>
 
               {erroresEdit.general && (
@@ -988,7 +996,6 @@ function Evento() {
           )}
         </div>
 
-        {/* C2: barra de progreso de preparación */}
         <div className="evento-barra-progreso">
           <div className="barra-progreso-bloque">
             <div className="barra-progreso-meta">
@@ -1020,7 +1027,7 @@ function Evento() {
         </div>
         <p className="texto-ayuda">
           {evento.subtareas.length === 0
-            ? "Todavía no tienes gestiones registradas para este evento."
+            ? "Todavía no hay gestiones en este evento."
             : `${evento.subtareas.length} gestión(es) registrada(s), ordenadas por plazo.`}
         </p>
 
@@ -1041,7 +1048,7 @@ function Evento() {
             >
               <ListPlus size={18} />
               <span>
-                {mostrarFormularioSubtarea ? "Cancelar" : "Agregar subtarea"}
+                {mostrarFormularioSubtarea ? "Cancelar" : "Agregar gestión"}
               </span>
             </button>
           </div>
@@ -1052,7 +1059,7 @@ function Evento() {
             className="formulario-nueva-subtarea"
             onSubmit={crearNuevaSubtarea}
           >
-            <h3>Agregar subtarea</h3>
+            <h3>Agregar gestión</h3>
 
             <div className="fila-nueva-subtarea">
               <div className="campo-subtarea">
@@ -1122,7 +1129,7 @@ function Evento() {
                 className="boton-principal"
                 disabled={guardandoNuevaSubtarea}
               >
-                {guardandoNuevaSubtarea ? "Guardando..." : "Agregar subtarea"}
+                {guardandoNuevaSubtarea ? "Guardando..." : "Agregar gestión"}
               </button>
             </div>
           </form>
@@ -1130,7 +1137,8 @@ function Evento() {
 
         {evento.subtareas.length === 0 ? (
           <p className="estado-vacio">
-            Aún no hay gestiones logísticas para este evento.
+            Todavía no hay gestiones. Agrega una (salón, catering, invitaciones)
+            para medir el avance.
           </p>
         ) : (
           <div className="lista-gestiones">
@@ -1145,7 +1153,7 @@ function Evento() {
                     className="gestion-info"
                     onSubmit={(e) => guardarSubtarea(e, subtarea.id)}
                   >
-                    <h3>Editar subtarea</h3>
+                    <h3>Editar gestión</h3>
 
                     {errorSubtarea && (
                       <p
@@ -1289,7 +1297,6 @@ function Evento() {
         )}
       </main>
 
-      {/* Modal Hecha / Posponer */}
       {gestionAccion && (
         <div
           className="modal-fondo"
@@ -1334,8 +1341,8 @@ function Evento() {
                 </h2>
                 <p style={{ margin: "0.35rem 0 0", color: "#64748b" }}>
                   {gestionAccion.tipo === "hecha"
-                    ? `¿Confirmas que ya completaste "${gestionAccion.subtarea.nombre}"?`
-                    : `Vas a posponer "${gestionAccion.subtarea.nombre}". Puedes dejar una nota opcional.`}
+                    ? `¿Ya terminaste "${gestionAccion.subtarea.nombre}"? Al confirmar, suma al avance del evento.`
+                    : `Vas a posponer "${gestionAccion.subtarea.nombre}". Deja de contar como pendiente urgente. Puedes anotar por qué.`}
                 </p>
               </div>
               <button
@@ -1376,7 +1383,7 @@ function Evento() {
                     }}
                   />
                   <span className="texto-ayuda-campo">
-                    Útil para recordar por qué la pospusiste (máx. 300
+                    Queda visible aquí para que recuerdes el motivo (máx. 300
                     caracteres).
                   </span>
                 </div>
@@ -1400,8 +1407,8 @@ function Evento() {
                   {guardandoAccion
                     ? "Guardando..."
                     : gestionAccion.tipo === "hecha"
-                      ? "Sí, marcar como hecha"
-                      : "Posponer gestión"}
+                      ? "Sí, ya está hecha"
+                      : "Posponer"}
                 </button>
                 <button
                   type="button"

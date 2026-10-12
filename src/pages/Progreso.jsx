@@ -73,7 +73,7 @@ function Progreso() {
 
       if (respEventos.status === 401 || respHoy.status === 401) {
         setMensajeError(
-          "Tu sesión expiró. Vuelve a iniciar sesión para continuar."
+          "Tu sesión expiró. Vuelve a iniciar sesión para ver tu avance."
         );
         setEstado("error");
         return;
@@ -88,7 +88,6 @@ function Progreso() {
 
       const base = Array.isArray(listaEventos) ? listaEventos : [];
 
-      // Si el listado no trae subtareas, pedimos el detalle de cada evento.
       const conSubtareas = await Promise.all(
         base.map(async (ev) => {
           if (Array.isArray(ev.subtareas)) return ev;
@@ -118,7 +117,7 @@ function Progreso() {
     } catch (err) {
       console.error(err);
       setMensajeError(
-        "No pudimos cargar tu progreso. Verifica que el backend esté encendido e intenta de nuevo."
+        "No pudimos cargar tu avance. Revisa tu conexión e intenta de nuevo."
       );
       setEstado("error");
     }
@@ -137,7 +136,7 @@ function Progreso() {
         },
         {
           valor: resumen.completadas,
-          etiqueta: "Gestiones completadas",
+          etiqueta: "Gestiones hechas",
           color: "var(--verde)",
         },
         {
@@ -160,13 +159,13 @@ function Progreso() {
       <main className="contenedor contenedor-estrecho">
         <div className="cabecera-pagina">
           <h1>Progreso</h1>
-          <p>Resumen de tu actividad y avance de preparación por evento.</p>
+          <p>Cuánto llevas preparado en cada evento.</p>
         </div>
 
         {estado === "cargando" && (
           <div className="estado-caja">
             <div className="spinner spinner-grande" />
-            <p className="estado-caja-texto">Cargando tu progreso...</p>
+            <p className="estado-caja-texto">Revisando el avance de tus eventos...</p>
           </div>
         )}
 
@@ -176,7 +175,7 @@ function Progreso() {
               {mensajeError}
             </p>
             <button onClick={cargarProgreso} className="btn btn-primario">
-              Reintentar
+              Intentar de nuevo
             </button>
           </div>
         )}
@@ -201,10 +200,10 @@ function Progreso() {
 
               {eventos.length === 0 ? (
                 <div className="estado-caja">
-                  <p className="estado-caja-titulo">Aún no tienes eventos</p>
+                  <p className="estado-caja-titulo">Todavía no hay eventos</p>
                   <p className="estado-caja-texto">
-                    Crea un evento y agrega gestiones para ver aquí el progreso
-                    de preparación.
+                    Crea un evento y agrega gestiones para ver aquí cuánto
+                    llevas preparado.
                   </p>
                   <Link to="/crear" className="btn btn-primario">
                     + Crear evento
@@ -251,8 +250,8 @@ function Progreso() {
             </section>
 
             <p className="progreso-nota">
-              Las gestiones pendientes incluyen las de hoy y las próximas. Las
-              vencidas necesitan tu atención:{" "}
+              Las pendientes son las de hoy y las próximas. Las vencidas
+              necesitan atención:{" "}
               <Link to="/hoy" className="enlace-secundario">
                 ir a la vista de hoy
               </Link>
