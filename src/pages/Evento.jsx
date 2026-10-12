@@ -68,6 +68,18 @@ function aDateTimeLocal(valor) {
   return local.toISOString().slice(0, 16);
 }
 
+function esCompletada(estado) {
+  const e = (estado || "").toLowerCase();
+  return e === "completada" || e === "ejecutada";
+}
+
+function calcularProgreso(subtareas = []) {
+  const total = subtareas.length;
+  const completadas = subtareas.filter((s) => esCompletada(s.estado)).length;
+  const porcentaje = total === 0 ? 0 : Math.round((completadas / total) * 100);
+  return { total, completadas, porcentaje };
+}
+
 function IconoError() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -662,6 +674,8 @@ function Evento() {
     );
   }
 
+  const progreso = calcularProgreso(evento.subtareas || []);
+
   return (
     <div className="pagina pagina-oscura">
       <Header />
@@ -974,6 +988,33 @@ function Evento() {
           )}
         </div>
 
+        {/* C2: barra de progreso de preparación */}
+        <div className="evento-barra-progreso">
+          <div className="barra-progreso-bloque">
+            <div className="barra-progreso-meta">
+              <span>
+                Preparación: {progreso.completadas} de {progreso.total} gestión
+                {progreso.total === 1 ? "" : "es"}
+              </span>
+              <strong>{progreso.porcentaje}%</strong>
+            </div>
+            <div
+              className="barra-progreso-track"
+              role="progressbar"
+              aria-valuenow={progreso.porcentaje}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`Progreso ${progreso.porcentaje} por ciento`}
+            >
+              <div
+                className="barra-progreso-fill"
+                style={{ width: `${progreso.porcentaje}%` }}
+                data-completo={progreso.porcentaje === 100 ? "true" : "false"}
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="paso-encabezado">
           <h2>Plan logístico</h2>
         </div>
@@ -1186,7 +1227,9 @@ function Evento() {
                         <span>Plazo: {formatearSoloFecha(subtarea.plazo)}</span>
                         <span>{subtarea.horas_estimadas} h estimadas</span>
                         {subtarea.nota ? (
-                          <span style={{ display: "block", marginTop: "0.25rem" }}>
+                          <span
+                            style={{ display: "block", marginTop: "0.25rem" }}
+                          >
                             Nota: {subtarea.nota}
                           </span>
                         ) : null}
@@ -1200,7 +1243,10 @@ function Evento() {
                       {ESTADO_LABEL[subtarea.estado] || subtarea.estado}
                     </span>
 
-                    <div className="evento-acciones" style={{ flexWrap: "wrap" }}>
+                    <div
+                      className="evento-acciones"
+                      style={{ flexWrap: "wrap" }}
+                    >
                       {subtarea.estado !== "completada" &&
                         subtarea.estado !== "ejecutada" && (
                           <>
@@ -1342,7 +1388,9 @@ function Evento() {
                 </p>
               )}
 
-              <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+              <div
+                style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}
+              >
                 <button
                   type="submit"
                   className="boton-principal"
