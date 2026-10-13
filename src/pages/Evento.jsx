@@ -68,9 +68,33 @@ function aDateTimeLocal(valor) {
   return local.toISOString().slice(0, 16);
 }
 
+function hoyISOLocal() {
+  const fecha = new Date();
+  const y = fecha.getFullYear();
+  const m = String(fecha.getMonth() + 1).padStart(2, "0");
+  const d = String(fecha.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function fechaEventoISO(evento) {
+  if (!evento?.fecha_hora) return "";
+  const texto = String(evento.fecha_hora);
+  if (texto.length >= 10 && texto[4] === "-") return texto.slice(0, 10);
+  const fecha = new Date(texto);
+  if (isNaN(fecha.getTime())) return "";
+  const y = fecha.getFullYear();
+  const m = String(fecha.getMonth() + 1).padStart(2, "0");
+  const d = String(fecha.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function esCompletada(estado) {
   const e = (estado || "").toLowerCase();
   return e === "completada" || e === "ejecutada";
+}
+
+function esPospuesta(estado) {
+  return (estado || "").toLowerCase() === "pospuesta";
 }
 
 function calcularProgreso(subtareas = []) {
@@ -151,6 +175,7 @@ function Evento() {
 
   const [gestionAccion, setGestionAccion] = useState(null);
   const [notaPosponer, setNotaPosponer] = useState("");
+  const [fechaReactivar, setFechaReactivar] = useState("");
   const [guardandoAccion, setGuardandoAccion] = useState(false);
   const [mensajeAccion, setMensajeAccion] = useState("");
 
@@ -190,6 +215,7 @@ function Evento() {
       if (gestionAccion) {
         setGestionAccion(null);
         setNotaPosponer("");
+        setFechaReactivar("");
         setMensajeAccion("");
       }
     };
@@ -565,12 +591,30 @@ function Evento() {
   const abrirHecha = (subtarea) => {
     setGestionAccion({ subtarea, tipo: "hecha" });
     setNotaPosponer("");
+    setFechaReactivar("");
     setMensajeAccion("");
   };
 
   const abrirPosponer = (subtarea) => {
     setGestionAccion({ subtarea, tipo: "posponer" });
     setNotaPosponer("");
+    setFechaReactivar("");
+    setMensajeAccion("");
+  };
+
+  const abrirReactivar = (subtarea) => {
+    const hoy = hoyISOLocal();
+    const fechaEv = fechaEventoISO(evento);
+    let sugerida = hoy;
+    if (subtarea.plazo && subtarea.plazo >= hoy) {
+      sugerida = subtarea.plazo;
+    }
+    if (fechaEv && sugerida > fechaEv) {
+      sugerida = hoy <= fechaEv ? hoy : fechaEv;
+    }
+    setGestionAccion({ subtarea, tipo: "reactivar" });
+    setNotaPosponer("");
+    setFechaReactivar(sugerida);
     setMensajeAccion("");
   };
 
@@ -578,7 +622,27 @@ function Evento() {
     if (guardandoAccion) return;
     setGestionAccion(null);
     setNotaPosponer("");
+    setFechaReactivar("");
     setMensajeAccion("");
+  };
+
+  const validarFechaReactivar = (fecha) => {
+    if (!fecha) return "Elige la fecha en la que quieres retomar esta gestión.";
+    const hoy = hoyISOLocal();
+    if (fecha < hoy) {
+      return "La fecha debe ser hoy o un día futuro. No se permiten fechas pasadas.";
+    }
+    if (!esAnioRazonable(fecha)) {
+      return `El año no puede ser mayor a ${ANIO_MAXIMO}.`;
+    }
+    const fechaEv = fechaEventoISO(evento);
+    if (fechaEv && fecha > fechaEv) {
+      return "La fecha no puede ser después del día del evento.";
+    }
+    if (evento?.plazo_limite && fecha > evento.plazo_limite) {
+      return "La fecha no puede pasar el plazo límite del evento.";
+    }
+    return "";
   };
 
   const confirmarAccion = async (e) => {
@@ -586,18 +650,29 @@ function Evento() {
     if (!gestionAccion) return;
 
     const { subtarea, tipo } = gestionAccion;
+
+    if (tipo === "reactivar") {
+      const errorFecha = validarFechaReactivar(fechaReactivar);
+      if (errorFecha) {
+        setMensajeAccion(errorFecha);
+        return;
+      }
+    }
+
     setGuardandoAccion(true);
     setMensajeAccion("");
 
     const body =
       tipo === "hecha"
         ? { estado: "completada" }
-        : {
-            estado: "pospuesta",
-            ...((notaPosponer || "").trim()
-              ? { nota: notaPosponer.trim() }
-              : {}),
-          };
+        : tipo === "reactivar"
+          ? { estado: "pendiente", plazo: fechaReactivar, nota: "" }
+          : {
+              estado: "pospuesta",
+              ...((notaPosponer || "").trim()
+                ? { nota: notaPosponer.trim() }
+                : {}),
+            };
 
     try {
       const respuesta = await fetch(`${API_URL}/subtareas/${subtarea.id}/`, {
@@ -620,28 +695,55 @@ function Evento() {
                 : null) ||
             (tipo === "hecha"
               ? "No pudimos marcarla como hecha. Intenta de nuevo."
-              : "No pudimos posponerla. Intenta de nuevo.")
+              : tipo === "reactivar"
+                ? "No pudimos reactivarla. Revisa la fecha e intenta de nuevo."
+                : "No pudimos posponerla. Intenta de nuevo.")
         );
         setGuardandoAccion(false);
         return;
       }
 
+      const actualizada = {
+        ...subtarea,
+        ...datos,
+        estado:
+          datos.estado ||
+          (tipo === "reactivar"
+            ? "pendiente"
+            : tipo === "hecha"
+              ? "completada"
+              : "pospuesta"),
+        plazo:
+          datos.plazo ||
+          (tipo === "reactivar" ? fechaReactivar : subtarea.plazo),
+        nota:
+          tipo === "reactivar"
+            ? datos.nota || ""
+            : datos.nota !== undefined
+              ? datos.nota
+              : subtarea.nota,
+      };
+
       setEvento((anterior) => ({
         ...anterior,
-        subtareas: anterior.subtareas.map((s) =>
-          s.id === subtarea.id ? { ...s, ...datos } : s
-        ),
+        subtareas: anterior.subtareas
+          .map((s) => (s.id === subtarea.id ? actualizada : s))
+          .sort((a, b) => String(a.plazo).localeCompare(String(b.plazo))),
       }));
 
+      const fechaLegible = formatearSoloFecha(fechaReactivar);
       setGestionAccion(null);
       setNotaPosponer("");
+      setFechaReactivar("");
       setMensajeAccion("");
       setExitoMsg(
         tipo === "hecha"
           ? `Listo. "${subtarea.nombre}" quedó hecha y suma al avance del evento.`
-          : (notaPosponer || "").trim()
-            ? `Pospuesta. "${subtarea.nombre}" quedó con nota.`
-            : `Pospuesta. "${subtarea.nombre}" ya no cuenta como pendiente.`
+          : tipo === "reactivar"
+            ? `Reactivada. "${subtarea.nombre}" vuelve al plan para el ${fechaLegible}.`
+            : (notaPosponer || "").trim()
+              ? `Pospuesta. "${subtarea.nombre}" quedó con nota.`
+              : `Pospuesta. "${subtarea.nombre}" ya no cuenta como pendiente.`
       );
     } catch (err) {
       console.error(err);
@@ -683,6 +785,10 @@ function Evento() {
   }
 
   const progreso = calcularProgreso(evento.subtareas || []);
+  const hoy = hoyISOLocal();
+  const topeAnio = `${ANIO_MAXIMO}-12-31`;
+  const fechaEv = fechaEventoISO(evento);
+  const maxReactivar = fechaEv && fechaEv < topeAnio ? fechaEv : topeAnio;
 
   return (
     <div className="pagina pagina-oscura">
@@ -1255,8 +1361,16 @@ function Evento() {
                       className="evento-acciones"
                       style={{ flexWrap: "wrap" }}
                     >
-                      {subtarea.estado !== "completada" &&
-                        subtarea.estado !== "ejecutada" && (
+                      {esPospuesta(subtarea.estado) ? (
+                        <button
+                          type="button"
+                          className="boton-secundario"
+                          onClick={() => abrirReactivar(subtarea)}
+                        >
+                          Reactivar
+                        </button>
+                      ) : (
+                        !esCompletada(subtarea.estado) && (
                           <>
                             <button
                               type="button"
@@ -1273,7 +1387,8 @@ function Evento() {
                               Posponer
                             </button>
                           </>
-                        )}
+                        )
+                      )}
                       <button
                         type="button"
                         className="boton-secundario"
@@ -1337,12 +1452,16 @@ function Evento() {
                 <h2 style={{ margin: 0, fontSize: "1.25rem" }}>
                   {gestionAccion.tipo === "hecha"
                     ? "Marcar como hecha"
-                    : "Posponer gestión"}
+                    : gestionAccion.tipo === "reactivar"
+                      ? "Reactivar gestión"
+                      : "Posponer gestión"}
                 </h2>
                 <p style={{ margin: "0.35rem 0 0", color: "#64748b" }}>
                   {gestionAccion.tipo === "hecha"
                     ? `¿Ya terminaste "${gestionAccion.subtarea.nombre}"? Al confirmar, suma al avance del evento.`
-                    : `Vas a posponer "${gestionAccion.subtarea.nombre}". Deja de contar como pendiente urgente. Puedes anotar por qué.`}
+                    : gestionAccion.tipo === "reactivar"
+                      ? `¿Reactivar "${gestionAccion.subtarea.nombre}"? Elige hoy o una fecha futura. Según ese día volverá a Hoy o a Próximas.`
+                      : `Vas a posponer "${gestionAccion.subtarea.nombre}". Deja de contar como pendiente urgente. Puedes anotar por qué.`}
                 </p>
               </div>
               <button
@@ -1389,6 +1508,36 @@ function Evento() {
                 </div>
               )}
 
+              {gestionAccion.tipo === "reactivar" && (
+                <div className="campo" style={{ marginBottom: "1rem" }}>
+                  <label htmlFor="fecha-reactivar">
+                    ¿Para qué fecha la retomas?
+                  </label>
+                  <input
+                    id="fecha-reactivar"
+                    type="date"
+                    value={fechaReactivar}
+                    min={hoy}
+                    max={maxReactivar}
+                    onChange={(e) => {
+                      setFechaReactivar(e.target.value);
+                      setMensajeAccion("");
+                    }}
+                    disabled={guardandoAccion}
+                    required
+                    style={{
+                      width: "100%",
+                      borderRadius: "10px",
+                      padding: "0.6rem",
+                    }}
+                  />
+                  <span className="texto-ayuda-campo">
+                    Solo hoy o fechas futuras, hasta el día del evento y sin
+                    pasar el año {ANIO_MAXIMO}.
+                  </span>
+                </div>
+              )}
+
               {mensajeAccion && (
                 <p className="alerta alerta-error" role="alert">
                   <IconoError /> {mensajeAccion}
@@ -1408,7 +1557,9 @@ function Evento() {
                     ? "Guardando..."
                     : gestionAccion.tipo === "hecha"
                       ? "Sí, ya está hecha"
-                      : "Posponer"}
+                      : gestionAccion.tipo === "reactivar"
+                        ? "Sí, reactivar"
+                        : "Posponer"}
                 </button>
                 <button
                   type="button"
