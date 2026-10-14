@@ -172,6 +172,9 @@ function Evento() {
 
   const [errorAccion, setErrorAccion] = useState("");
   const [eliminandoEvento, setEliminandoEvento] = useState(false);
+  const [confirmarEliminarEvento, setConfirmarEliminarEvento] = useState(false);
+  const [subtareaAEliminar, setSubtareaAEliminar] = useState(null);
+  const [eliminandoSubtarea, setEliminandoSubtarea] = useState(false);
 
   const [gestionAccion, setGestionAccion] = useState(null);
   const [notaPosponer, setNotaPosponer] = useState("");
@@ -211,17 +214,31 @@ function Evento() {
 
   useEffect(() => {
     const tecla = (e) => {
-      if (e.key !== "Escape" || guardandoAccion) return;
+      if (e.key !== "Escape") return;
+      if (guardandoAccion || eliminandoEvento || eliminandoSubtarea) return;
       if (gestionAccion) {
         setGestionAccion(null);
         setNotaPosponer("");
         setFechaReactivar("");
         setMensajeAccion("");
       }
+      if (confirmarEliminarEvento) {
+        setConfirmarEliminarEvento(false);
+      }
+      if (subtareaAEliminar) {
+        setSubtareaAEliminar(null);
+      }
     };
     window.addEventListener("keydown", tecla);
     return () => window.removeEventListener("keydown", tecla);
-  }, [gestionAccion, guardandoAccion]);
+  }, [
+    gestionAccion,
+    guardandoAccion,
+    confirmarEliminarEvento,
+    subtareaAEliminar,
+    eliminandoEvento,
+    eliminandoSubtarea,
+  ]);
 
   const iniciarEdicion = () => {
     setForm({
@@ -511,52 +528,77 @@ function Evento() {
     }
   };
 
-  const eliminarSubtarea = async (subtarea) => {
-    const confirmar = window.confirm(
-      `¿Seguro que quieres quitar "${subtarea.nombre}" del plan? Esta acción no se puede deshacer.`
-    );
+  const pedirEliminarSubtarea = (subtarea) => {
+    setErrorAccion("");
+    setSubtareaAEliminar(subtarea);
+  };
 
-    if (!confirmar) return;
+  const cancelarEliminarSubtarea = () => {
+    if (eliminandoSubtarea) return;
+    setSubtareaAEliminar(null);
+  };
 
+  const confirmarEliminarSubtarea = async () => {
+    if (!subtareaAEliminar) return;
+
+    setEliminandoSubtarea(true);
     setErrorAccion("");
 
     try {
-      const respuesta = await fetch(`${API_URL}/subtareas/${subtarea.id}/`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
+      const respuesta = await fetch(
+        `${API_URL}/subtareas/${subtareaAEliminar.id}/`,
+        {
+          method: "DELETE",
+          headers: getAuthHeaders(),
+        }
+      );
 
       if (!respuesta.ok) {
         const datos = await respuesta.json().catch(() => ({}));
-        setErrorAccion(datos.error || "No pudimos quitar esa gestión.");
+        setErrorAccion(
+          datos.error ||
+            datos.mensaje ||
+            "No pudimos quitar esa gestión. Intenta de nuevo."
+        );
+        setEliminandoSubtarea(false);
         return;
       }
 
+      const nombre = subtareaAEliminar.nombre;
       setEvento((anterior) => ({
         ...anterior,
-        subtareas: anterior.subtareas.filter((s) => s.id !== subtarea.id),
+        subtareas: anterior.subtareas.filter(
+          (s) => s.id !== subtareaAEliminar.id
+        ),
       }));
 
-      if (subtareaEditando === subtarea.id) {
+      if (subtareaEditando === subtareaAEliminar.id) {
         setSubtareaEditando(null);
       }
 
-      setExitoMsg("Quitamos esa gestión del plan.");
+      setSubtareaAEliminar(null);
+      setExitoMsg(`Quitamos "${nombre}" del plan logístico.`);
     } catch (err) {
       console.error(err);
       setErrorAccion(
         "No pudimos guardar el cambio. Intenta de nuevo en unos segundos."
       );
+    } finally {
+      setEliminandoSubtarea(false);
     }
   };
 
-  const eliminarEvento = async () => {
-    const confirmar = window.confirm(
-      `¿Seguro que quieres eliminar "${evento.nombre}" y todas sus gestiones? Esta acción no se puede deshacer.`
-    );
+  const pedirEliminarEvento = () => {
+    setErrorAccion("");
+    setConfirmarEliminarEvento(true);
+  };
 
-    if (!confirmar) return;
+  const cancelarEliminarEvento = () => {
+    if (eliminandoEvento) return;
+    setConfirmarEliminarEvento(false);
+  };
 
+  const confirmarEliminarEventoAhora = async () => {
     setEliminandoEvento(true);
     setErrorAccion("");
 
@@ -568,14 +610,19 @@ function Evento() {
 
       if (!respuesta.ok) {
         const datos = await respuesta.json().catch(() => ({}));
-        setErrorAccion(datos.error || "No pudimos eliminar el evento.");
+        setErrorAccion(
+          datos.error ||
+            datos.mensaje ||
+            "No pudimos eliminar el evento. Intenta de nuevo."
+        );
         setEliminandoEvento(false);
+        setConfirmarEliminarEvento(false);
         return;
       }
 
       navigate("/eventos", {
         state: {
-          mensaje: "Eliminamos el evento y sus gestiones.",
+          mensaje: "Eliminamos el evento y todas sus gestiones.",
         },
       });
     } catch (err) {
@@ -583,8 +630,8 @@ function Evento() {
       setErrorAccion(
         "No pudimos guardar el cambio. Intenta de nuevo en unos segundos."
       );
-    } finally {
       setEliminandoEvento(false);
+      setConfirmarEliminarEvento(false);
     }
   };
 
@@ -1064,7 +1111,7 @@ function Evento() {
                   <button
                     type="button"
                     className="boton-secundario"
-                    onClick={eliminarEvento}
+                    onClick={pedirEliminarEvento}
                     disabled={eliminandoEvento}
                   >
                     {eliminandoEvento ? "Eliminando..." : "Eliminar evento"}
@@ -1399,7 +1446,7 @@ function Evento() {
                       <button
                         type="button"
                         className="boton-secundario"
-                        onClick={() => eliminarSubtarea(subtarea)}
+                        onClick={() => pedirEliminarSubtarea(subtarea)}
                       >
                         Eliminar
                       </button>
@@ -1460,7 +1507,7 @@ function Evento() {
                   {gestionAccion.tipo === "hecha"
                     ? `¿Ya terminaste "${gestionAccion.subtarea.nombre}"? Al confirmar, suma al avance del evento.`
                     : gestionAccion.tipo === "reactivar"
-                      ? `¿Reactivar "${gestionAccion.subtarea.nombre}"? Elige hoy o una fecha futura. Según ese día volverá a Hoy o a Próximas.`
+                      ? `¿Reactivar "${gestionAccion.subtarea.nombre}"? Elige hoy o una fecha futura.`
                       : `Vas a posponer "${gestionAccion.subtarea.nombre}". Deja de contar como pendiente urgente. Puedes anotar por qué.`}
                 </p>
               </div>
@@ -1574,6 +1621,199 @@ function Evento() {
           </div>
         </div>
       )}
+
+      {confirmarEliminarEvento && (
+        <div
+          className="modal-fondo"
+          onMouseDown={cancelarEliminarEvento}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "1rem",
+          }}
+        >
+          <div
+            className="modal"
+            onMouseDown={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="eliminar-evento-titulo"
+            style={{
+              background: "#fff",
+              borderRadius: "16px",
+              padding: "1.5rem",
+              maxWidth: "420px",
+              width: "100%",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "1rem",
+                marginBottom: "1rem",
+              }}
+            >
+              <div>
+                <h2
+                  id="eliminar-evento-titulo"
+                  style={{ margin: 0, fontSize: "1.25rem" }}
+                >
+                  Eliminar evento
+                </h2>
+                <p style={{ margin: "0.35rem 0 0", color: "#64748b" }}>
+                  ¿Seguro que quieres eliminar{" "}
+                  <strong>&quot;{evento.nombre}&quot;</strong>? También se
+                  eliminarán todas sus gestiones del plan. Esta acción no se
+                  puede deshacer.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={cancelarEliminarEvento}
+                disabled={eliminandoEvento}
+                aria-label="Cerrar"
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  fontSize: "1.25rem",
+                  cursor: "pointer",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {errorAccion && (
+              <p className="alerta alerta-error" role="alert">
+                <IconoError /> {errorAccion}
+              </p>
+            )}
+
+            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="boton-principal"
+                onClick={confirmarEliminarEventoAhora}
+                disabled={eliminandoEvento}
+                style={{ flex: 1 }}
+              >
+                {eliminandoEvento ? "Eliminando..." : "Sí, eliminar evento"}
+              </button>
+              <button
+                type="button"
+                className="boton-secundario"
+                onClick={cancelarEliminarEvento}
+                disabled={eliminandoEvento}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {subtareaAEliminar && (
+        <div
+          className="modal-fondo"
+          onMouseDown={cancelarEliminarSubtarea}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "1rem",
+          }}
+        >
+          <div
+            className="modal"
+            onMouseDown={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="eliminar-gestion-titulo"
+            style={{
+              background: "#fff",
+              borderRadius: "16px",
+              padding: "1.5rem",
+              maxWidth: "420px",
+              width: "100%",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "1rem",
+                marginBottom: "1rem",
+              }}
+            >
+              <div>
+                <h2
+                  id="eliminar-gestion-titulo"
+                  style={{ margin: 0, fontSize: "1.25rem" }}
+                >
+                  Quitar gestión del plan
+                </h2>
+                <p style={{ margin: "0.35rem 0 0", color: "#64748b" }}>
+                  ¿Seguro que quieres quitar{" "}
+                  <strong>&quot;{subtareaAEliminar.nombre}&quot;</strong> del
+                  plan de este evento? Dejará de contar en el avance y en Hoy.
+                  Esta acción no se puede deshacer.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={cancelarEliminarSubtarea}
+                disabled={eliminandoSubtarea}
+                aria-label="Cerrar"
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  fontSize: "1.25rem",
+                  cursor: "pointer",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {errorAccion && (
+              <p className="alerta alerta-error" role="alert">
+                <IconoError /> {errorAccion}
+              </p>
+            )}
+
+            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="boton-principal"
+                onClick={confirmarEliminarSubtarea}
+                disabled={eliminandoSubtarea}
+                style={{ flex: 1 }}
+              >
+                {eliminandoSubtarea ? "Eliminando..." : "Sí, quitar gestión"}
+              </button>
+              <button
+                type="button"
+                className="boton-secundario"
+                onClick={cancelarEliminarSubtarea}
+                disabled={eliminandoSubtarea}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
