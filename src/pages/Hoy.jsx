@@ -46,11 +46,26 @@ export default function Hoy() {
   const [estado, setEstado] = useState("cargando");
   const [mensajeError, setMensajeError] = useState("");
 
+  
+  const [requiereReorganizacion, setRequiereReorganizacion] = useState(false);
+  const [limiteHorasDiarias, setLimiteHorasDiarias] = useState(6);
+  const [horasPendientesHoy, setHorasPendientesHoy] = useState(0);
+  const [excesoHorasHoy, setExcesoHorasHoy] = useState(0);
+  const [mostrarResolucionHoras, setMostrarResolucionHoras] = useState(false);
+  const [modoResolucionHoras, setModoResolucionHoras] = useState(null);
+  const [nuevoLimiteHoras, setNuevoLimiteHoras] = useState(6);
+  const [guardandoLimiteHoras, setGuardandoLimiteHoras] = useState(false);
+  const [mensajeLimiteHoras, setMensajeLimiteHoras] = useState("");
+  const [gestionesSeleccionadas, setGestionesSeleccionadas] = useState([]);
+  const [mensajeReorganizacion, setMensajeReorganizacion] = useState("");
+
+
   const [gestionEditando, setGestionEditando] = useState(null);
   const [nuevaFecha, setNuevaFecha] = useState("");
   const [guardandoReprogramacion, setGuardandoReprogramacion] = useState(false);
   const [mensajeReprogramacion, setMensajeReprogramacion] = useState("");
   const [fechaSugerida, setFechaSugerida] = useState("");
+  const [fechasSugeridas, setFechasSugeridas] = useState([]);
 
   const [gestionAccion, setGestionAccion] = useState(null);
   const [notaPosponer, setNotaPosponer] = useState("");
@@ -90,6 +105,20 @@ export default function Hoy() {
       setParaHoy(listaParaHoy);
       setProximas(listaProximas);
 
+      const limite = Number(datos.limite_horas_diarias ?? 6);
+      const horas = Number(datos.resumen?.horas_pendientes_hoy ?? 0);
+      const exceso = Number(
+        datos.exceso_horas_hoy ?? Math.max(0, horas - limite)
+      );
+      const requiere = datos.requiere_reorganizacion === true || exceso > 0;
+
+      setLimiteHorasDiarias(limite);
+      setNuevoLimiteHoras(limite);
+      setHorasPendientesHoy(horas);
+      setExcesoHorasHoy(exceso);
+      setRequiereReorganizacion(requiere);
+      setMostrarResolucionHoras(requiere);
+
       const total =
         listaVencidas.length + listaParaHoy.length + listaProximas.length;
 
@@ -102,6 +131,79 @@ export default function Hoy() {
       setEstado("error");
     }
   };
+
+  
+  const guardarNuevoLimite = async (e) => {
+    e.preventDefault();
+    setMensajeLimiteHoras("");
+
+    const limite = Number(nuevoLimiteHoras);
+
+    if (!Number.isInteger(limite) || limite < 1 || limite > 24) {
+      setMensajeLimiteHoras("El límite debe ser un número entero entre 1 y 24.");
+      return;
+    }
+
+    setGuardandoLimiteHoras(true);
+
+    try {
+      const respuesta = await fetch(`${API_URL}/configuracion/limite-horas/`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ limite_horas_diarias: limite }),
+      });
+
+      const datos = await respuesta.json().catch(() => ({}));
+
+      if (!respuesta.ok) {
+        const errorLimite = datos.limite_horas_diarias;
+        const mensaje = Array.isArray(errorLimite)
+          ? errorLimite[0]
+          : typeof errorLimite === "string"
+            ? errorLimite
+            : "No pudimos cambiar el límite. Revisa las horas asignadas e intenta de nuevo.";
+
+        setMensajeLimiteHoras(mensaje);
+        return;
+      }
+
+      setLimiteHorasDiarias(Number(datos.limite_horas_diarias ?? limite));
+      setModoResolucionHoras(null);
+      setMostrarResolucionHoras(false);
+      await cargarGestiones();
+    } catch (err) {
+      console.error(err);
+      setMensajeLimiteHoras(
+        "No pudimos guardar el límite. Revisa tu conexión e intenta de nuevo."
+      );
+    } finally {
+      setGuardandoLimiteHoras(false);
+    }
+  };
+
+  
+  const abrirOpcionesReprogramacion = () => {
+    setModoResolucionHoras("reprogramar");
+    setGestionesSeleccionadas([]);
+    setMensajeReorganizacion("");
+  };
+
+  const elegirGestionParaReprogramar = () => {
+    const gestion = paraHoy.find((g) =>
+      gestionesSeleccionadas.includes(g.id)
+    );
+
+    if (!gestion) {
+      setMensajeReorganizacion("Selecciona una gestión para cambiar su fecha.");
+      return;
+    }
+
+    setMostrarResolucionHoras(false);
+    setModoResolucionHoras(null);
+    setMensajeReorganizacion("");
+    abrirReprogramacion(gestion);
+  };
+
 
   useEffect(() => {
     cargarGestiones();
@@ -134,6 +236,7 @@ export default function Hoy() {
     setNuevaFecha(gestion.fecha || "");
     setMensajeReprogramacion("");
     setFechaSugerida("");
+    setFechasSugeridas([]);
   };
 
   const cerrarReprogramacion = () => {
@@ -142,6 +245,7 @@ export default function Hoy() {
     setNuevaFecha("");
     setMensajeReprogramacion("");
     setFechaSugerida("");
+    setFechasSugeridas([]);
   };
 
   const guardarReprogramacion = async (e) => {
@@ -168,22 +272,30 @@ export default function Hoy() {
       const datos = await respuesta.json();
 
       if (respuesta.status === 409 && datos?.conflicto) {
-        setMensajeReprogramacion(
-          datos.mensaje ||
-            `Ese día te quedarías con ${datos.horas_planificadas} h (tu límite es ${datos.limite_horas} h).`
-        );
-        setFechaSugerida(datos.fecha_sugerida || "");
-        setGuardandoReprogramacion(false);
-        return;
-      }
+  setMensajeReprogramacion(
+    datos.mensaje ||
+      `Ese día te quedarías con ${datos.horas_planificadas} h (tu límite es ${datos.limite_horas} h).`
+  );
 
-      if (!respuesta.ok) {
-        setMensajeReprogramacion(
-          mensajeDeError(datos, "No pudimos cambiar la fecha. Intenta de nuevo.")
-        );
-        setGuardandoReprogramacion(false);
-        return;
-      }
+  setFechasSugeridas(datos.fechas_sugeridas || []);
+  setFechaSugerida(
+    datos.fechas_sugeridas?.[0]?.fecha ||
+      datos.fecha_sugerida ||
+      ""
+  );
+
+  setGuardandoReprogramacion(false);
+  return;
+}
+
+if (!respuesta.ok) {
+  setMensajeReprogramacion(
+    mensajeDeError(datos, "No pudimos mover la gestión a esa fecha.")
+  );
+
+  setGuardandoReprogramacion(false);
+  return;
+}
 
       setGestionEditando(null);
       setNuevaFecha("");
@@ -540,6 +652,362 @@ export default function Hoy() {
         )}
       </main>
 
+        
+      {mostrarResolucionHoras && (
+        <div
+          className="modal-fondo resolucion-horas-fondo"
+          style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 9999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "1.5rem",
+          background: "rgba(21, 10, 46, 0.72)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+        }}
+        >
+          <div
+            className="modal resolucion-horas-tarjeta"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="resolucion-horas-titulo"
+            style={{
+            width: "100%",
+            maxWidth: "560px",
+            maxHeight: "90vh",
+            overflowY: "auto",
+            padding: "2.2rem",
+            borderRadius: "28px",
+            background: "#150a2e",
+            color: "#ffffff",
+            border: "1px solid rgba(109,77,246,0.4)",
+            boxShadow: "0 30px 100px rgba(0,0,0,0.4)",
+          }}
+          >
+            <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>
+              ⏳
+            </div>
+
+          
+
+            
+
+    <p
+      style={{
+        margin: "0 0 0.6rem",
+        color: "#d7f25e",
+        fontSize: "0.78rem",
+        fontWeight: 800,
+        letterSpacing: "0.12em",
+        textTransform: "uppercase",
+      }}
+    >
+      ORGANIZACIÓN DIARIA
+    </p>
+
+    <h2
+      id="resolucion-horas-titulo"
+      style={{
+        margin: "0 0 0.8rem",
+        color: "#ffffff",
+        fontSize: "clamp(1.7rem, 4vw, 2.15rem)",
+        lineHeight: 1.15,
+        letterSpacing: "-0.04em",
+        fontWeight: 800,
+      }}
+    >
+      Tu día necesita reorganizarse
+    </h2>
+
+    <p
+      style={{
+        margin: "0 0 1.5rem",
+        color: "#d4cee8",
+        fontSize: "1rem",
+        lineHeight: 1.7,
+      }}
+    >
+      Tu planificación supera el tiempo que tienes disponible.
+      Ajustémosla para que puedas avanzar sin sobrecargar tu día.
+    </p>
+
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+        gap: "0.7rem",
+        marginBottom: "1.4rem",
+      }}
+    >
+      <div
+        style={{
+          padding: "1rem 0.6rem",
+          borderRadius: "16px",
+          background: "#2a1758",
+          border: "1px solid rgba(109, 77, 246, 0.4)",
+          textAlign: "center",
+        }}
+      >
+        <span style={{ display: "block", color: "#c9bfff", fontSize: "0.78rem" }}>
+          Programadas
+        </span>
+        <strong style={{ display: "block", marginTop: "0.4rem", fontSize: "1.7rem", color: "#ffffff" }}>
+          {horasPendientesHoy} h
+        </strong>
+      </div>
+
+      <div
+        style={{
+          padding: "1rem 0.6rem",
+          borderRadius: "16px",
+          background: "rgba(20, 184, 166, 0.15)",
+          border: "1px solid rgba(20, 184, 166, 0.4)",
+          textAlign: "center",
+        }}
+      >
+        <span style={{ display: "block", color: "#7cebe0", fontSize: "0.78rem" }}>
+          Tu límite
+        </span>
+        <strong style={{ display: "block", marginTop: "0.4rem", fontSize: "1.7rem", color: "#14b8a6" }}>
+          {limiteHorasDiarias} h
+        </strong>
+      </div>
+
+      <div
+        style={{
+          padding: "1rem 0.6rem",
+          borderRadius: "16px",
+          background: "rgba(215, 242, 94, 0.12)",
+          border: "1px solid rgba(215, 242, 94, 0.35)",
+          textAlign: "center",
+        }}
+      >
+        <span style={{ display: "block", color: "#b94b3b", fontSize: "0.78rem" }}>
+          Exceso
+        </span>
+        <strong style={{ display: "block", marginTop: "0.4rem", fontSize: "1.7rem", color: "#c24130" }}>
+          {excesoHorasHoy} h
+        </strong>
+      </div>
+    </div>
+
+    <p
+      style={{
+        margin: "0 0 1.2rem",
+        color: "#d4cee8",
+        fontSize: "0.96rem",
+        lineHeight: 1.6,
+      }}
+    >
+      ¿Cómo quieres resolverlo? Elige una opción para continuar.
+    </p>
+
+            {modoResolucionHoras === null && (
+              <div style={{ display: "grid", gap: "0.8rem" }}>
+                <button
+                  type="button"
+                  className="btn btn-primario btn-ancho"
+                  onClick={abrirOpcionesReprogramacion}
+                >
+                  Reprogramar gestiones
+                </button>
+
+               
+                <button
+                  type="button"
+                  className="btn btn-fantasma btn-ancho"
+                  style={{ color: "#ffffff" }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "#000000";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "#ffffff";
+                  }}
+                  onClick={() => {
+                    setNuevoLimiteHoras(limiteHorasDiarias);
+                    setMensajeLimiteHoras("");
+                    setModoResolucionHoras("limite");
+                  }}
+                >
+                  Cambiar mi límite
+                </button>
+
+                
+              </div>
+            )}
+
+            {modoResolucionHoras === "reprogramar" && (
+              <div style={{ marginTop: "1rem" }}>
+                <p>Selecciona una gestión de hoy para cambiarle la fecha:</p>
+
+                {paraHoy.length === 0 ? (
+                  <p className="texto-ayuda-campo">
+                    No hay gestiones con fecha de hoy para seleccionar.
+                  </p>
+                ) : (
+                  <div style={{ display: "grid", gap: "0.65rem" }}>
+                    {paraHoy.map((gestion) => (
+                      <label
+                        key={gestion.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.7rem",
+                          padding: "0.8rem",
+                          border: "1px solid var(--borde, #d7dce2)",
+                          borderRadius: "12px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="gestion-reprogramar"
+                          checked={gestionesSeleccionadas.includes(gestion.id)}
+                          onChange={() => {
+                            setGestionesSeleccionadas([gestion.id]);
+                            setMensajeReorganizacion("");
+                          }}
+                        />
+                        <span>
+                          <strong>{gestion.titulo}</strong>
+                          <span style={{ display: "block", fontSize: "0.9rem" }}>
+                            {gestion.horas_estimadas} h estimadas
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {mensajeReorganizacion && (
+                  <p className="alerta alerta-error" role="alert">
+                    {mensajeReorganizacion}
+                  </p>
+                )}
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.7rem",
+                    marginTop: "1rem",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="btn btn-primario"
+                    style={{ flex: 1 }}
+                    onClick={elegirGestionParaReprogramar}
+                    disabled={paraHoy.length === 0}
+                  >
+                    Cambiar fecha
+                  </button>
+                  
+                  <button
+                    type="button"
+                    className="btn btn-fantasma"
+                    style={{ color: "#ffffff" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "#000000";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = "#ffffff";
+                    }}
+                    onClick={() => {
+                      setModoResolucionHoras(null);
+                      setGestionesSeleccionadas([]);
+                      setMensajeReorganizacion("");
+                    }}
+                  >
+                    Volver
+                  </button>
+
+                </div>
+              </div>
+            )}
+
+            {modoResolucionHoras === "limite" && (
+              <form
+                onSubmit={guardarNuevoLimite}
+                style={{ marginTop: "1rem" }}
+              >
+                <div className="campo">
+                  <label htmlFor="nuevo-limite-horas">
+                    Nuevo límite de horas por día
+                  </label>
+                  <input
+                    id="nuevo-limite-horas"
+                    type="number"
+                    min="1"
+                    max="24"
+                    step="1"
+                    value={nuevoLimiteHoras}
+                    onChange={(e) => {
+                      setNuevoLimiteHoras(e.target.value);
+                      setMensajeLimiteHoras("");
+                    }}
+                    disabled={guardandoLimiteHoras}
+                    required
+                  />
+                  <span className="texto-ayuda-campo">
+                    Introduce un número entero entre 1 y 16.
+                  </span>
+                </div>
+
+                {mensajeLimiteHoras && (
+                  <p className="alerta alerta-error" role="alert">
+                    {mensajeLimiteHoras}
+                  </p>
+                )}
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.7rem",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <button
+                    type="submit"
+                    className="btn btn-primario"
+                    style={{ flex: 1 }}
+                    disabled={guardandoLimiteHoras}
+                  >
+                    {guardandoLimiteHoras
+                      ? "Guardando..."
+                      : "Guardar límite"}
+                  </button>
+                      
+                  <button
+                    type="button"
+                    className="btn btn-fantasma"
+                    style={{ color: "#ffffff" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "#000000";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = "#ffffff";
+                    }}
+                    onClick={() => {
+                      setModoResolucionHoras(null);
+                      setGestionesSeleccionadas([]);
+                      setMensajeReorganizacion("");
+                    }}
+                  >
+                    Volver
+                  </button>
+
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+
       {gestionEditando && (
         <div className="modal-fondo" onMouseDown={cerrarReprogramacion}>
           <div
@@ -582,6 +1050,7 @@ export default function Hoy() {
                     setNuevaFecha(e.target.value);
                     setMensajeReprogramacion("");
                     setFechaSugerida("");
+                    setFechasSugeridas([]);
                   }}
                   disabled={guardandoReprogramacion}
                   aria-invalid={!!mensajeReprogramacion}
@@ -594,36 +1063,75 @@ export default function Hoy() {
                 )}
               </div>
 
-              {fechaSugerida && (
-                <div
-                  style={{
-                    marginTop: "1rem",
-                    padding: "1rem",
-                    borderRadius: "14px",
-                    background: "#f4f8ff",
-                    border: "1px solid #d8e5ff",
-                  }}
-                >
-                  <strong style={{ display: "block", marginBottom: "0.35rem" }}>
-                    Ese día ya llegaste al límite de horas
-                  </strong>
-                  <p style={{ margin: "0 0 0.9rem" }}>
-                    Puedes dejarla el{" "}
-                    <strong>{formatearFechaLarga(fechaSugerida)}</strong>, que
-                    sí tiene espacio.
-                  </p>
-                  <button
-                    type="button"
-                    className="btn btn-primario btn-ancho"
-                    onClick={aceptarFechaSugerida}
-                    disabled={guardandoReprogramacion}
-                  >
-                    {guardandoReprogramacion
-                      ? "Guardando..."
-                      : `Mover al ${formatearFechaLarga(fechaSugerida)}`}
-                  </button>
-                </div>
-              )}
+              
+        {(fechasSugeridas.length > 0 || fechaSugerida) && (
+          <div
+            style={{
+              marginTop: "1rem",
+              padding: "1rem",
+              borderRadius: "14px",
+              background: "#f4f8ff",
+              border: "1px solid #d8e5ff",
+            }}
+          >
+            <strong style={{ display: "block", marginBottom: "0.4rem" }}>
+              Busquemos un día con espacio
+            </strong>
+
+            <p style={{ margin: "0 0 1rem" }}>
+              La fecha elegida supera tu límite de horas. Estas son las primeras
+              fechas disponibles:
+            </p>
+
+            {fechasSugeridas.map((opcion) => (
+              <label
+                key={opcion.fecha}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.6rem",
+                  padding: "0.7rem",
+                  marginBottom: "0.5rem",
+                  borderRadius: "10px",
+                  border: fechaSugerida === opcion.fecha
+                    ? "2px solid #6478e8"
+                    : "1px solid #d8deea",
+                  background: "#fff",
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="radio"
+                  name="fecha-sugerida"
+                  value={opcion.fecha}
+                  checked={fechaSugerida === opcion.fecha}
+                  onChange={() => setFechaSugerida(opcion.fecha)}
+                  disabled={guardandoReprogramacion}
+                />
+
+                <span style={{ flex: 1 }}>
+                  <strong>{formatearFechaLarga(opcion.fecha)}</strong>
+                  <br />
+                  <small>
+                    {opcion.horas_disponibles} horas disponibles
+                  </small>
+                </span>
+              </label>
+            ))}
+
+            <button
+              type="button"
+              className="btn btn-primario btn-ancho"
+              onClick={aceptarFechaSugerida}
+              disabled={guardandoReprogramacion || !fechaSugerida}
+            >
+              {guardandoReprogramacion
+                ? "Guardando..."
+                : "Confirmar fecha seleccionada"}
+            </button>
+          </div>
+        )}
+
 
               <button
                 type="submit"
