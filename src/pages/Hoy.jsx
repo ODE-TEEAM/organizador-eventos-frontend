@@ -46,7 +46,6 @@ export default function Hoy() {
   const [estado, setEstado] = useState("cargando");
   const [mensajeError, setMensajeError] = useState("");
 
-  
   const [requiereReorganizacion, setRequiereReorganizacion] = useState(false);
   const [limiteHorasDiarias, setLimiteHorasDiarias] = useState(6);
   const [horasPendientesHoy, setHorasPendientesHoy] = useState(0);
@@ -58,7 +57,6 @@ export default function Hoy() {
   const [mensajeLimiteHoras, setMensajeLimiteHoras] = useState("");
   const [gestionesSeleccionadas, setGestionesSeleccionadas] = useState([]);
   const [mensajeReorganizacion, setMensajeReorganizacion] = useState("");
-
 
   const [gestionEditando, setGestionEditando] = useState(null);
   const [nuevaFecha, setNuevaFecha] = useState("");
@@ -86,7 +84,9 @@ export default function Hoy() {
       });
 
       if (respuesta.status === 401) {
-        setMensajeError("Tu sesión expiró. Vuelve a iniciar sesión para ver tus gestiones.");
+        setMensajeError(
+          "Tu sesión expiró. Vuelve a iniciar sesión para ver tus gestiones."
+        );
         setEstado("error");
         return;
       }
@@ -132,15 +132,14 @@ export default function Hoy() {
     }
   };
 
-  
   const guardarNuevoLimite = async (e) => {
     e.preventDefault();
     setMensajeLimiteHoras("");
 
     const limite = Number(nuevoLimiteHoras);
 
-    if (!Number.isInteger(limite) || limite < 1 || limite > 24) {
-      setMensajeLimiteHoras("El límite debe ser un número entero entre 1 y 24.");
+    if (!Number.isInteger(limite) || limite < 1 || limite > 16) {
+      setMensajeLimiteHoras("El límite debe ser un número entero entre 1 y 16.");
       return;
     }
 
@@ -181,7 +180,6 @@ export default function Hoy() {
     }
   };
 
-  
   const abrirOpcionesReprogramacion = () => {
     setModoResolucionHoras("reprogramar");
     setGestionesSeleccionadas([]);
@@ -203,7 +201,6 @@ export default function Hoy() {
     setMensajeReorganizacion("");
     abrirReprogramacion(gestion);
   };
-
 
   useEffect(() => {
     cargarGestiones();
@@ -229,7 +226,12 @@ export default function Hoy() {
 
     window.addEventListener("keydown", tecla);
     return () => window.removeEventListener("keydown", tecla);
-  }, [gestionEditando, gestionAccion, guardandoReprogramacion, guardandoAccion]);
+  }, [
+    gestionEditando,
+    gestionAccion,
+    guardandoReprogramacion,
+    guardandoAccion,
+  ]);
 
   const abrirReprogramacion = (gestion) => {
     setGestionEditando(gestion);
@@ -272,30 +274,28 @@ export default function Hoy() {
       const datos = await respuesta.json();
 
       if (respuesta.status === 409 && datos?.conflicto) {
-  setMensajeReprogramacion(
-    datos.mensaje ||
-      `Ese día te quedarías con ${datos.horas_planificadas} h (tu límite es ${datos.limite_horas} h).`
-  );
+        setMensajeReprogramacion(
+          datos.mensaje ||
+            `Ese día te quedarías con ${datos.horas_planificadas} h (tu límite es ${datos.limite_horas} h).`
+        );
 
-  setFechasSugeridas(datos.fechas_sugeridas || []);
-  setFechaSugerida(
-    datos.fechas_sugeridas?.[0]?.fecha ||
-      datos.fecha_sugerida ||
-      ""
-  );
+        setFechasSugeridas(datos.fechas_sugeridas || []);
+        setFechaSugerida(
+          datos.fechas_sugeridas?.[0]?.fecha || datos.fecha_sugerida || ""
+        );
 
-  setGuardandoReprogramacion(false);
-  return;
-}
+        setGuardandoReprogramacion(false);
+        return;
+      }
 
-if (!respuesta.ok) {
-  setMensajeReprogramacion(
-    mensajeDeError(datos, "No pudimos mover la gestión a esa fecha.")
-  );
+      if (!respuesta.ok) {
+        setMensajeReprogramacion(
+          mensajeDeError(datos, "No pudimos mover la gestión a esa fecha.")
+        );
 
-  setGuardandoReprogramacion(false);
-  return;
-}
+        setGuardandoReprogramacion(false);
+        return;
+      }
 
       setGestionEditando(null);
       setNuevaFecha("");
@@ -493,7 +493,11 @@ if (!respuesta.ok) {
 
       <main className="contenedor" style={{ paddingBottom: "3.5rem" }}>
         {exitoAccion && (
-          <p className="alerta alerta-exito" role="status" style={{ marginBottom: "1rem" }}>
+          <p
+            className="alerta alerta-exito"
+            role="status"
+            style={{ marginBottom: "1rem" }}
+          >
             {exitoAccion}
             <button
               type="button"
@@ -519,7 +523,8 @@ if (!respuesta.ok) {
               Después las <strong>próximas</strong>.
             </li>
             <li>
-              Si coinciden en fecha, va primero la de menor esfuerzo (menos horas).
+              Si coinciden en fecha, va primero la de menor esfuerzo (menos
+              horas).
             </li>
           </ol>
         </details>
@@ -545,7 +550,9 @@ if (!respuesta.ok) {
         {estado === "vacio" && (
           <div className="estado-caja">
             <AvatarAnimal semilla={email} size={84} />
-            <p className="estado-caja-titulo">Hoy no tienes gestiones urgentes</p>
+            <p className="estado-caja-titulo">
+              Hoy no tienes gestiones urgentes
+            </p>
             <p className="estado-caja-texto">
               No hay vencidas, ni de hoy, ni próximas. Crea un evento y agrega
               gestiones (catering, salón, invitaciones) para verlas aquí.
@@ -601,7 +608,10 @@ if (!respuesta.ok) {
                 <span className="seccion-conteo">{paraHoy.length}</span>
               </h2>
               {paraHoy.length === 0 ? (
-                <p className="texto-ayuda-campo" style={{ padding: "0.4rem 0" }}>
+                <p
+                  className="texto-ayuda-campo"
+                  style={{ padding: "0.4rem 0" }}
+                >
                   Nada vence hoy. Las próximas siguen en su fecha.
                 </p>
               ) : (
@@ -652,22 +662,21 @@ if (!respuesta.ok) {
         )}
       </main>
 
-        
       {mostrarResolucionHoras && (
         <div
           className="modal-fondo resolucion-horas-fondo"
           style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 9999,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "1.5rem",
-          background: "rgba(21, 10, 46, 0.72)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-        }}
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1.5rem",
+            background: "rgba(21, 10, 46, 0.72)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+          }}
         >
           <div
             className="modal resolucion-horas-tarjeta"
@@ -675,135 +684,168 @@ if (!respuesta.ok) {
             aria-modal="true"
             aria-labelledby="resolucion-horas-titulo"
             style={{
-            width: "100%",
-            maxWidth: "560px",
-            maxHeight: "90vh",
-            overflowY: "auto",
-            padding: "2.2rem",
-            borderRadius: "28px",
-            background: "#150a2e",
-            color: "#ffffff",
-            border: "1px solid rgba(109,77,246,0.4)",
-            boxShadow: "0 30px 100px rgba(0,0,0,0.4)",
-          }}
+              width: "100%",
+              maxWidth: "560px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              padding: "2.2rem",
+              borderRadius: "28px",
+              background: "#150a2e",
+              color: "#ffffff",
+              border: "1px solid rgba(109,77,246,0.4)",
+              boxShadow: "0 30px 100px rgba(0,0,0,0.4)",
+            }}
           >
-            <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>
-              ⏳
+            <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>⏳</div>
+
+            <p
+              style={{
+                margin: "0 0 0.6rem",
+                color: "#d7f25e",
+                fontSize: "0.78rem",
+                fontWeight: 800,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+              }}
+            >
+              ORGANIZACIÓN DIARIA
+            </p>
+
+            <h2
+              id="resolucion-horas-titulo"
+              style={{
+                margin: "0 0 0.8rem",
+                color: "#ffffff",
+                fontSize: "clamp(1.7rem, 4vw, 2.15rem)",
+                lineHeight: 1.15,
+                letterSpacing: "-0.04em",
+                fontWeight: 800,
+              }}
+            >
+              Tu día necesita reorganizarse
+            </h2>
+
+            <p
+              style={{
+                margin: "0 0 1.5rem",
+                color: "#d4cee8",
+                fontSize: "1rem",
+                lineHeight: 1.7,
+              }}
+            >
+              Tu planificación supera el tiempo que tienes disponible.
+              Ajustémosla para que puedas avanzar sin sobrecargar tu día.
+            </p>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: "0.7rem",
+                marginBottom: "1.4rem",
+              }}
+            >
+              <div
+                style={{
+                  padding: "1rem 0.6rem",
+                  borderRadius: "16px",
+                  background: "#2a1758",
+                  border: "1px solid rgba(109, 77, 246, 0.4)",
+                  textAlign: "center",
+                }}
+              >
+                <span
+                  style={{
+                    display: "block",
+                    color: "#c9bfff",
+                    fontSize: "0.78rem",
+                  }}
+                >
+                  Programadas
+                </span>
+                <strong
+                  style={{
+                    display: "block",
+                    marginTop: "0.4rem",
+                    fontSize: "1.7rem",
+                    color: "#ffffff",
+                  }}
+                >
+                  {horasPendientesHoy} h
+                </strong>
+              </div>
+
+              <div
+                style={{
+                  padding: "1rem 0.6rem",
+                  borderRadius: "16px",
+                  background: "rgba(20, 184, 166, 0.15)",
+                  border: "1px solid rgba(20, 184, 166, 0.4)",
+                  textAlign: "center",
+                }}
+              >
+                <span
+                  style={{
+                    display: "block",
+                    color: "#7cebe0",
+                    fontSize: "0.78rem",
+                  }}
+                >
+                  Tu límite
+                </span>
+                <strong
+                  style={{
+                    display: "block",
+                    marginTop: "0.4rem",
+                    fontSize: "1.7rem",
+                    color: "#14b8a6",
+                  }}
+                >
+                  {limiteHorasDiarias} h
+                </strong>
+              </div>
+
+              <div
+                style={{
+                  padding: "1rem 0.6rem",
+                  borderRadius: "16px",
+                  background: "rgba(215, 242, 94, 0.12)",
+                  border: "1px solid rgba(215, 242, 94, 0.35)",
+                  textAlign: "center",
+                }}
+              >
+                <span
+                  style={{
+                    display: "block",
+                    color: "#b94b3b",
+                    fontSize: "0.78rem",
+                  }}
+                >
+                  Exceso
+                </span>
+                <strong
+                  style={{
+                    display: "block",
+                    marginTop: "0.4rem",
+                    fontSize: "1.7rem",
+                    color: "#c24130",
+                  }}
+                >
+                  {excesoHorasHoy} h
+                </strong>
+              </div>
             </div>
 
-          
-
-            
-
-    <p
-      style={{
-        margin: "0 0 0.6rem",
-        color: "#d7f25e",
-        fontSize: "0.78rem",
-        fontWeight: 800,
-        letterSpacing: "0.12em",
-        textTransform: "uppercase",
-      }}
-    >
-      ORGANIZACIÓN DIARIA
-    </p>
-
-    <h2
-      id="resolucion-horas-titulo"
-      style={{
-        margin: "0 0 0.8rem",
-        color: "#ffffff",
-        fontSize: "clamp(1.7rem, 4vw, 2.15rem)",
-        lineHeight: 1.15,
-        letterSpacing: "-0.04em",
-        fontWeight: 800,
-      }}
-    >
-      Tu día necesita reorganizarse
-    </h2>
-
-    <p
-      style={{
-        margin: "0 0 1.5rem",
-        color: "#d4cee8",
-        fontSize: "1rem",
-        lineHeight: 1.7,
-      }}
-    >
-      Tu planificación supera el tiempo que tienes disponible.
-      Ajustémosla para que puedas avanzar sin sobrecargar tu día.
-    </p>
-
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-        gap: "0.7rem",
-        marginBottom: "1.4rem",
-      }}
-    >
-      <div
-        style={{
-          padding: "1rem 0.6rem",
-          borderRadius: "16px",
-          background: "#2a1758",
-          border: "1px solid rgba(109, 77, 246, 0.4)",
-          textAlign: "center",
-        }}
-      >
-        <span style={{ display: "block", color: "#c9bfff", fontSize: "0.78rem" }}>
-          Programadas
-        </span>
-        <strong style={{ display: "block", marginTop: "0.4rem", fontSize: "1.7rem", color: "#ffffff" }}>
-          {horasPendientesHoy} h
-        </strong>
-      </div>
-
-      <div
-        style={{
-          padding: "1rem 0.6rem",
-          borderRadius: "16px",
-          background: "rgba(20, 184, 166, 0.15)",
-          border: "1px solid rgba(20, 184, 166, 0.4)",
-          textAlign: "center",
-        }}
-      >
-        <span style={{ display: "block", color: "#7cebe0", fontSize: "0.78rem" }}>
-          Tu límite
-        </span>
-        <strong style={{ display: "block", marginTop: "0.4rem", fontSize: "1.7rem", color: "#14b8a6" }}>
-          {limiteHorasDiarias} h
-        </strong>
-      </div>
-
-      <div
-        style={{
-          padding: "1rem 0.6rem",
-          borderRadius: "16px",
-          background: "rgba(215, 242, 94, 0.12)",
-          border: "1px solid rgba(215, 242, 94, 0.35)",
-          textAlign: "center",
-        }}
-      >
-        <span style={{ display: "block", color: "#b94b3b", fontSize: "0.78rem" }}>
-          Exceso
-        </span>
-        <strong style={{ display: "block", marginTop: "0.4rem", fontSize: "1.7rem", color: "#c24130" }}>
-          {excesoHorasHoy} h
-        </strong>
-      </div>
-    </div>
-
-    <p
-      style={{
-        margin: "0 0 1.2rem",
-        color: "#d4cee8",
-        fontSize: "0.96rem",
-        lineHeight: 1.6,
-      }}
-    >
-      ¿Cómo quieres resolverlo? Elige una opción para continuar.
-    </p>
+            <p
+              style={{
+                margin: "0 0 1.2rem",
+                color: "#d4cee8",
+                fontSize: "0.96rem",
+                lineHeight: 1.6,
+              }}
+            >
+              ¿Cómo quieres resolverlo? Elige una opción para continuar.
+            </p>
 
             {modoResolucionHoras === null && (
               <div style={{ display: "grid", gap: "0.8rem" }}>
@@ -815,7 +857,6 @@ if (!respuesta.ok) {
                   Reprogramar gestiones
                 </button>
 
-               
                 <button
                   type="button"
                   className="btn btn-fantasma btn-ancho"
@@ -834,8 +875,6 @@ if (!respuesta.ok) {
                 >
                   Cambiar mi límite
                 </button>
-
-                
               </div>
             )}
 
@@ -873,7 +912,9 @@ if (!respuesta.ok) {
                         />
                         <span>
                           <strong>{gestion.titulo}</strong>
-                          <span style={{ display: "block", fontSize: "0.9rem" }}>
+                          <span
+                            style={{ display: "block", fontSize: "0.9rem" }}
+                          >
                             {gestion.horas_estimadas} h estimadas
                           </span>
                         </span>
@@ -905,7 +946,7 @@ if (!respuesta.ok) {
                   >
                     Cambiar fecha
                   </button>
-                  
+
                   <button
                     type="button"
                     className="btn btn-fantasma"
@@ -924,7 +965,6 @@ if (!respuesta.ok) {
                   >
                     Volver
                   </button>
-
                 </div>
               </div>
             )}
@@ -942,7 +982,7 @@ if (!respuesta.ok) {
                     id="nuevo-limite-horas"
                     type="number"
                     min="1"
-                    max="24"
+                    max="16"
                     step="1"
                     value={nuevoLimiteHoras}
                     onChange={(e) => {
@@ -980,7 +1020,7 @@ if (!respuesta.ok) {
                       ? "Guardando..."
                       : "Guardar límite"}
                   </button>
-                      
+
                   <button
                     type="button"
                     className="btn btn-fantasma"
@@ -999,14 +1039,12 @@ if (!respuesta.ok) {
                   >
                     Volver
                   </button>
-
                 </div>
               </form>
             )}
           </div>
         </div>
       )}
-
 
       {gestionEditando && (
         <div className="modal-fondo" onMouseDown={cerrarReprogramacion}>
@@ -1063,75 +1101,74 @@ if (!respuesta.ok) {
                 )}
               </div>
 
-              
-        {(fechasSugeridas.length > 0 || fechaSugerida) && (
-          <div
-            style={{
-              marginTop: "1rem",
-              padding: "1rem",
-              borderRadius: "14px",
-              background: "#f4f8ff",
-              border: "1px solid #d8e5ff",
-            }}
-          >
-            <strong style={{ display: "block", marginBottom: "0.4rem" }}>
-              Busquemos un día con espacio
-            </strong>
+              {(fechasSugeridas.length > 0 || fechaSugerida) && (
+                <div
+                  style={{
+                    marginTop: "1rem",
+                    padding: "1rem",
+                    borderRadius: "14px",
+                    background: "#f4f8ff",
+                    border: "1px solid #d8e5ff",
+                  }}
+                >
+                  <strong style={{ display: "block", marginBottom: "0.4rem" }}>
+                    Busquemos un día con espacio
+                  </strong>
 
-            <p style={{ margin: "0 0 1rem" }}>
-              La fecha elegida supera tu límite de horas. Estas son las primeras
-              fechas disponibles:
-            </p>
+                  <p style={{ margin: "0 0 1rem" }}>
+                    La fecha elegida supera tu límite de horas. Estas son las
+                    primeras fechas disponibles:
+                  </p>
 
-            {fechasSugeridas.map((opcion) => (
-              <label
-                key={opcion.fecha}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.6rem",
-                  padding: "0.7rem",
-                  marginBottom: "0.5rem",
-                  borderRadius: "10px",
-                  border: fechaSugerida === opcion.fecha
-                    ? "2px solid #6478e8"
-                    : "1px solid #d8deea",
-                  background: "#fff",
-                  cursor: "pointer",
-                }}
-              >
-                <input
-                  type="radio"
-                  name="fecha-sugerida"
-                  value={opcion.fecha}
-                  checked={fechaSugerida === opcion.fecha}
-                  onChange={() => setFechaSugerida(opcion.fecha)}
-                  disabled={guardandoReprogramacion}
-                />
+                  {fechasSugeridas.map((opcion) => (
+                    <label
+                      key={opcion.fecha}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.6rem",
+                        padding: "0.7rem",
+                        marginBottom: "0.5rem",
+                        borderRadius: "10px",
+                        border:
+                          fechaSugerida === opcion.fecha
+                            ? "2px solid #6478e8"
+                            : "1px solid #d8deea",
+                        background: "#fff",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="fecha-sugerida"
+                        value={opcion.fecha}
+                        checked={fechaSugerida === opcion.fecha}
+                        onChange={() => setFechaSugerida(opcion.fecha)}
+                        disabled={guardandoReprogramacion}
+                      />
 
-                <span style={{ flex: 1 }}>
-                  <strong>{formatearFechaLarga(opcion.fecha)}</strong>
-                  <br />
-                  <small>
-                    {opcion.horas_disponibles} horas disponibles
-                  </small>
-                </span>
-              </label>
-            ))}
+                      <span style={{ flex: 1 }}>
+                        <strong>{formatearFechaLarga(opcion.fecha)}</strong>
+                        <br />
+                        <small>
+                          {opcion.horas_disponibles} horas disponibles
+                        </small>
+                      </span>
+                    </label>
+                  ))}
 
-            <button
-              type="button"
-              className="btn btn-primario btn-ancho"
-              onClick={aceptarFechaSugerida}
-              disabled={guardandoReprogramacion || !fechaSugerida}
-            >
-              {guardandoReprogramacion
-                ? "Guardando..."
-                : "Confirmar fecha seleccionada"}
-            </button>
-          </div>
-        )}
-
+                  <button
+                    type="button"
+                    className="btn btn-primario btn-ancho"
+                    onClick={aceptarFechaSugerida}
+                    disabled={guardandoReprogramacion || !fechaSugerida}
+                  >
+                    {guardandoReprogramacion
+                      ? "Guardando..."
+                      : "Confirmar fecha seleccionada"}
+                  </button>
+                </div>
+              )}
 
               <button
                 type="submit"
@@ -1195,7 +1232,8 @@ if (!respuesta.ok) {
                     maxLength={300}
                   />
                   <span className="texto-ayuda-campo">
-                    Queda visible en el evento para que recuerdes el motivo (máx. 300 caracteres).
+                    Queda visible en el evento para que recuerdes el motivo
+                    (máx. 300 caracteres).
                   </span>
                 </div>
               )}
@@ -1206,7 +1244,9 @@ if (!respuesta.ok) {
                 </p>
               )}
 
-              <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+              <div
+                style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}
+              >
                 <button
                   type="submit"
                   className="btn btn-primario"
