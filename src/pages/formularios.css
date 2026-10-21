@@ -587,6 +587,8 @@ hr {
 /* Recuadro del formulario */
 .formulario-nueva-subtarea {
   margin-top: 16px;
+  /* Separa el formulario de la lista de gestiones que va debajo */
+  margin-bottom: 36px;
   padding: 22px;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
