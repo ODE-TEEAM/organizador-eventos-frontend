@@ -443,7 +443,7 @@ export default function Hoy() {
     <div className="pagina pagina-oscura">
       <Header />
 
-      <section className="hero-hoy">
+      <section id="contenido" tabIndex={-1} className="hero-hoy">
         <div className="contenedor">
           <span className="hero-hoy-saludo">
             <span className="chip-punto" style={{ background: "var(--lima)" }} />
@@ -530,15 +530,15 @@ export default function Hoy() {
         </details>
 
         {estado === "cargando" && (
-          <div className="estado-caja">
-            <div className="spinner spinner-grande" />
+          <div className="estado-caja" role="status" aria-live="polite">
+            <div className="spinner spinner-grande" aria-hidden="true" />
             <p className="estado-caja-texto">Revisando lo urgente de hoy...</p>
           </div>
         )}
 
         {estado === "error" && (
           <div className="estado-caja">
-            <p className="alerta alerta-error" style={{ margin: 0 }}>
+            <p className="alerta alerta-error" role="alert" style={{ margin: 0 }}>
               {mensajeError}
             </p>
             <button onClick={cargarGestiones} className="btn btn-primario">
@@ -817,7 +817,7 @@ export default function Hoy() {
                 <span
                   style={{
                     display: "block",
-                    color: "#b94b3b",
+                    color: "#ffb4a8",
                     fontSize: "0.78rem",
                   }}
                 >
@@ -828,7 +828,7 @@ export default function Hoy() {
                     display: "block",
                     marginTop: "0.4rem",
                     fontSize: "1.7rem",
-                    color: "#c24130",
+                    color: "#ff8a7a",
                   }}
                 >
                   {excesoHorasHoy} h
@@ -1092,12 +1092,15 @@ export default function Hoy() {
                   }}
                   disabled={guardandoReprogramacion}
                   aria-invalid={!!mensajeReprogramacion}
+                  aria-describedby={mensajeReprogramacion ? "nueva-fecha-error" : "nueva-fecha-ayuda"}
                 />
-                <span className="texto-ayuda-campo">
+                <span className="texto-ayuda-campo" id="nueva-fecha-ayuda">
                   Hoy o más adelante, dentro de los próximos 10 años.
                 </span>
                 {mensajeReprogramacion && (
-                  <span className="error-campo">{mensajeReprogramacion}</span>
+                  <span className="error-campo" id="nueva-fecha-error" role="alert">
+                    {mensajeReprogramacion}
+                  </span>
                 )}
               </div>
 
@@ -1115,10 +1118,11 @@ export default function Hoy() {
                     Busquemos un día con espacio
                   </strong>
 
-                  <p style={{ margin: "0 0 1rem" }}>
+                  <p id="sugeridas-texto" style={{ margin: "0 0 1rem" }}>
                     La fecha elegida supera tu límite de horas. Estas son las
                     primeras fechas disponibles:
                   </p>
+                  <div role="radiogroup" aria-labelledby="sugeridas-texto">
 
                   {fechasSugeridas.map((opcion) => (
                     <label
@@ -1156,6 +1160,7 @@ export default function Hoy() {
                       </span>
                     </label>
                   ))}
+                  </div>
 
                   <button
                     type="button"
@@ -1309,6 +1314,7 @@ function GestionCard({ gestion, tipo, onReprogramar, onHecha, onPosponer }) {
           type="button"
           className="btn btn-fantasma"
           onClick={() => onHecha(gestion)}
+          aria-label={`Marcar como hecha: ${gestion.titulo}`}
         >
           Hecha
         </button>
@@ -1316,6 +1322,7 @@ function GestionCard({ gestion, tipo, onReprogramar, onHecha, onPosponer }) {
           type="button"
           className="btn btn-fantasma"
           onClick={() => onPosponer(gestion)}
+          aria-label={`Posponer: ${gestion.titulo}`}
         >
           Posponer
         </button>
@@ -1323,6 +1330,7 @@ function GestionCard({ gestion, tipo, onReprogramar, onHecha, onPosponer }) {
           type="button"
           className="btn btn-fantasma"
           onClick={() => onReprogramar(gestion)}
+          aria-label={`Reprogramar: ${gestion.titulo}`}
         >
           Reprogramar
         </button>

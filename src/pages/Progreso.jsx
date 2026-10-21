@@ -17,6 +17,49 @@ function calcularProgreso(subtareas = []) {
   return { total, completadas, porcentaje };
 }
 
+// Próxima gestión pendiente (la de plazo más cercano que no esté hecha).
+function proximaPendiente(subtareas = []) {
+  return (
+    subtareas
+      .filter((s) => !esCompletada(s.estado) && (s.estado || "").toLowerCase() !== "pospuesta")
+      .sort((a, b) => String(a.plazo).localeCompare(String(b.plazo)))[0] || null
+  );
+}
+
+// Días que faltan para el evento (negativo si ya pasó).
+function diasParaEvento(fechaHora) {
+  if (!fechaHora) return null;
+  const fecha = new Date(fechaHora);
+  if (isNaN(fecha.getTime())) return null;
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  fecha.setHours(0, 0, 0, 0);
+  return Math.round((fecha - hoy) / 86400000);
+}
+
+function textoDias(dias) {
+  if (dias === null) return "";
+  if (dias < 0) return "Evento ya realizado";
+  if (dias === 0) return "Es hoy";
+  if (dias === 1) return "Falta 1 día";
+  return `Faltan ${dias} días`;
+}
+
+// Orden útil para el organizador: primero lo que está más cerca y sin
+// terminar; los eventos al 100% o ya realizados van al final.
+function ordenarEventos(eventos) {
+  return [...eventos].sort((a, b) => {
+    const pa = calcularProgreso(a.subtareas || []).porcentaje;
+    const pb = calcularProgreso(b.subtareas || []).porcentaje;
+    const da = diasParaEvento(a.fecha_hora);
+    const db = diasParaEvento(b.fecha_hora);
+    const terminadoA = pa === 100 || (da !== null && da < 0);
+    const terminadoB = pb === 100 || (db !== null && db < 0);
+    if (terminadoA !== terminadoB) return terminadoA ? 1 : -1;
+    return (da ?? Infinity) - (db ?? Infinity);
+  });
+}
+
 function formatearFechaCorta(valor) {
   if (!valor) return "—";
   const fecha = new Date(valor);
@@ -33,7 +76,7 @@ function BarraProgreso({ completadas, total, porcentaje }) {
     <div className="barra-progreso-bloque">
       <div className="barra-progreso-meta">
         <span>
-          {completadas} de {total} gestión{total === 1 ? "" : "es"}
+          {completadas} de {total} {total === 1 ? "gestión" : "gestiones"}
         </span>
         <strong>{porcentaje}%</strong>
       </div>
@@ -156,22 +199,22 @@ function Progreso() {
     <div className="pagina pagina-oscura">
       <Header />
 
-      <main className="contenedor contenedor-estrecho">
+      <main id="contenido" tabIndex={-1} className="contenedor contenedor-estrecho">
         <div className="cabecera-pagina">
           <h1>Progreso</h1>
           <p>Cuánto llevas preparado en cada evento.</p>
         </div>
 
         {estado === "cargando" && (
-          <div className="estado-caja">
-            <div className="spinner spinner-grande" />
+          <div className="estado-caja" role="status" aria-live="polite">
+            <div className="spinner spinner-grande" aria-hidden="true" />
             <p className="estado-caja-texto">Revisando el avance de tus eventos...</p>
           </div>
         )}
 
         {estado === "error" && (
           <div className="estado-caja">
-            <p className="alerta alerta-error" style={{ margin: 0 }}>
+            <p className="alerta alerta-error" role="alert" style={{ margin: 0 }}>
               {mensajeError}
             </p>
             <button onClick={cargarProgreso} className="btn btn-primario">
@@ -197,6 +240,12 @@ function Progreso() {
 
             <section className="seccion-eventos-progreso">
               <h2 className="seccion-titulo-progreso">Avance por evento</h2>
+              {eventos.length > 1 && (
+                <p className="progreso-orden">
+                  Ordenados por cercanía: primero los eventos próximos que aún
+                  tienen gestiones pendientes.
+                </p>
+              )}
 
               {eventos.length === 0 ? (
                 <div className="estado-caja">
@@ -211,15 +260,18 @@ function Progreso() {
                 </div>
               ) : (
                 <div className="lista-eventos-progreso">
-                  {eventos.map((ev) => {
+                  {ordenarEventos(eventos).map((ev) => {
                     const { total, completadas, porcentaje } = calcularProgreso(
                       ev.subtareas || []
                     );
+                    const siguiente = proximaPendiente(ev.subtareas || []);
+                    const dias = diasParaEvento(ev.fecha_hora);
                     return (
                       <Link
                         key={ev.id}
                         to={`/evento/${ev.id}`}
                         className="evento-progreso-card"
+                        aria-label={`${ev.nombre}: ${porcentaje}% preparado, ${completadas} de ${total} gestiones hechas. ${textoDias(dias)}. Ver detalle.`}
                       >
                         <div className="evento-progreso-cabecera">
                           <div>
@@ -231,17 +283,34 @@ function Progreso() {
                               {ev.fecha_hora
                                 ? ` · ${formatearFechaCorta(ev.fecha_hora)}`
                                 : ""}
+                              {dias !== null ? ` · ${textoDias(dias)}` : ""}
                             </p>
                           </div>
                           <span className="badge badge-violeta">
                             {porcentaje}%
                           </span>
                         </div>
-                        <BarraProgreso
-                          completadas={completadas}
-                          total={total}
-                          porcentaje={porcentaje}
-                        />
+                        {total === 0 ? (
+                          <p className="evento-progreso-aviso">
+                            Sin gestiones todavía: entra al evento y agrega la
+                            primera para empezar a medir el avance.
+                          </p>
+                        ) : (
+                          <>
+                            <BarraProgreso
+                              completadas={completadas}
+                              total={total}
+                              porcentaje={porcentaje}
+                            />
+                            <p className="evento-progreso-siguiente">
+                              {porcentaje === 100
+                                ? "✓ Todo listo: todas las gestiones están hechas."
+                                : siguiente
+                                  ? `Siguiente: ${siguiente.nombre} · ${formatearFechaCorta(`${siguiente.plazo}T12:00:00`)}`
+                                  : "Las gestiones restantes están pospuestas."}
+                            </p>
+                          </>
+                        )}
                       </Link>
                     );
                   })}

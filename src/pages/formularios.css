@@ -836,3 +836,20 @@ hr {
     width: 100%;
   }
 }
+/* ---- Sprint 5: carga del día y total del plan en /crear ---- */
+.resumen-plan {
+  margin: 0.4rem 0 1.1rem;
+  font-size: 0.86rem;
+  color: #5f5880;
+}
+
+.carga-dia {
+  display: block;
+  margin-top: 0.3rem;
+  font-weight: 700;
+  color: var(--teal-texto);
+}
+
+.carga-dia-llena {
+  color: var(--rojo-texto);
+}

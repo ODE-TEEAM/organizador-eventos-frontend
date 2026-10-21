@@ -73,7 +73,7 @@ export default function Eventos() {
     <div className="pagina pagina-oscura">
       <Header />
 
-      <main className="contenedor">
+      <main id="contenido" tabIndex={-1} className="contenedor">
         <div className="cabecera-pagina">
           <h1>Mis eventos</h1>
           <p>Consulta y administra los eventos que has creado.</p>

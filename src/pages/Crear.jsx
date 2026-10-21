@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { getAuthHeaders } from "../auth";
@@ -131,6 +131,50 @@ function Crear() {
   const [estadoEnvio, setEstadoEnvio] = useState("idle");
   const [mensajeError, setMensajeError] = useState("");
   const [solicitudAbrirLimite, setSolicitudAbrirLimite] = useState(0);
+  // Mensaje para lectores de pantalla al agregar/quitar gestiones.
+  const [avisoLista, setAvisoLista] = useState("");
+
+  // Carga del día (mejora de usabilidad Sprint 5): horas ya ocupadas por
+  // fecha en OTROS eventos + límite diario. Permite avisar del conflicto
+  // ANTES de guardar, en vez de descubrirlo después en la página del evento.
+  const [horasOcupadasPorFecha, setHorasOcupadasPorFecha] = useState({});
+  const [limiteDiario, setLimiteDiario] = useState(null);
+
+  useEffect(() => {
+    let cancelado = false;
+    fetch(`${API_URL}/hoy/`, { headers: getAuthHeaders() })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((datos) => {
+        if (cancelado || !datos) return;
+        const mapa = {};
+        for (const g of datos.gestiones || []) {
+          if (!g.fecha) continue;
+          mapa[g.fecha] = (mapa[g.fecha] || 0) + Number(g.horas_estimadas || 0);
+        }
+        setHorasOcupadasPorFecha(mapa);
+        if (datos.limite_horas_diarias != null) {
+          setLimiteDiario(Number(datos.limite_horas_diarias));
+        }
+      })
+      .catch(() => {
+        // Sin datos de carga: el backend sigue validando el límite al guardar.
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  // Horas de una fecha: otros eventos + gestiones ya agregadas en esta lista.
+  const horasDelDia = (fechaISO, excluirIndice = -1) =>
+    (horasOcupadasPorFecha[fechaISO] || 0) +
+    subtareas
+      .filter((s, i) => s.plazo === fechaISO && i !== excluirIndice)
+      .reduce((total, s) => total + Number(s.horas_estimadas || 0), 0);
+
+  const plazoNuevaISO = nuevaSubtarea.plazo.includes("-")
+    ? nuevaSubtarea.plazo
+    : "";
+  const horasYaEnFecha = plazoNuevaISO ? horasDelDia(plazoNuevaISO) : 0;
 
   const enviando =
     estadoEnvio === "guardando-evento" || estadoEnvio === "guardando-subtareas";
@@ -322,7 +366,33 @@ function Crear() {
       hayError = true;
     }
 
-    if (hayError) return;
+    // Conflicto con el límite diario detectado en el navegador: se avisa aquí
+    // con el detalle de horas, en lugar de crear el evento y perder la gestión.
+    if (!hayError && limiteDiario !== null) {
+      const ocupadas = horasDelDia(plazoISO);
+      const total = ocupadas + horas;
+      if (total > limiteDiario) {
+        const disponibles = Math.max(0, limiteDiario - ocupadas);
+        setErrorHorasSubtarea(
+          `Conflicto de horas: el ${formatearFechaVisual(plazoISO)} ya tienes ${ocupadas} h ` +
+            `asignadas; con esta gestión serían ${total} h y tu límite diario es ${limiteDiario} h. ` +
+            (disponibles > 0
+              ? `Usa máximo ${disponibles} h o elige otra fecha.`
+              : "Ese día ya está lleno: elige otra fecha.")
+        );
+        hayError = true;
+      }
+    }
+
+    if (hayError) {
+      // Lleva el foco al primer campo con error de la gestión.
+      setTimeout(() => {
+        document
+          .querySelector('.bloque-nueva-gestion [aria-invalid="true"]')
+          ?.focus();
+      }, 0);
+      return;
+    }
 
     setSubtareas([
       ...subtareas,
@@ -333,10 +403,25 @@ function Crear() {
       },
     ]);
     setNuevaSubtarea({ nombre: "", plazo: "", horas_estimadas: "" });
+    setAvisoLista(`Gestión "${nuevaSubtarea.nombre.trim()}" agregada a la lista.`);
+    // Deja el foco listo para escribir la siguiente gestión.
+    document.getElementById("subtarea-nombre")?.focus();
   };
 
   const quitarSubtarea = (index) => {
+    const quitada = subtareas[index];
     setSubtareas(subtareas.filter((_, i) => i !== index));
+    setAvisoLista(quitada ? `Gestión "${quitada.nombre}" quitada de la lista.` : "");
+    document.getElementById("subtarea-nombre")?.focus();
+  };
+
+  // Enter dentro de los campos de la gestión agrega la gestión a la lista
+  // (antes enviaba el formulario completo y creaba el evento sin querer).
+  const enterAgregaGestion = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      agregarSubtarea();
+    }
   };
 
     // Crea la gestión logística en el backend.
@@ -348,8 +433,6 @@ const crearSubtareaEnBackend = async (eventoId, subtarea) => {
   });
 
   const datos = await respuesta.json();
-  console.log("Respuesta del backend al crear subtarea:", datos);
-console.log("¿Es conflicto?", datos.conflicto);
 
   if (!respuesta.ok) {
     // Mensaje amigable para conflictos con el límite diario.
@@ -430,8 +513,6 @@ console.log("¿Es conflicto?", datos.conflicto);
       });
 
       const datos = await respuesta.json();
-      console.log("Respuesta del backend al crear subtarea:", datos);
-console.log("¿Es conflicto?", datos.conflicto);
 
       if (!respuesta.ok) {
         // Si el backend rechaza el evento por superar el límite de horas.
@@ -494,7 +575,7 @@ console.log("¿Es conflicto?", datos.conflicto);
       {/* Header con logo + menú de usuario */}
       <Header solicitudAbrirLimite={solicitudAbrirLimite} />
 
-      <main className="contenedor contenedor-estrecho pagina-formulario">
+      <main id="contenido" tabIndex={-1} className="contenedor contenedor-estrecho pagina-formulario">
         <h1>Crear evento</h1>
         <p className="subtitulo">
           Completa estos dos pasos y te llevaremos directo a la página del evento,
@@ -520,9 +601,11 @@ console.log("¿Es conflicto?", datos.conflicto);
                 onChange={manejarCambio}
                 placeholder="Ej. Boda de Camila y Julián"
                 aria-invalid={!!erroresFormulario.nombre}
+                aria-describedby={erroresFormulario.nombre ? "nombre-error" : undefined}
+                aria-required="true"
               />
               {erroresFormulario.nombre && (
-                <span className="error-campo">
+                <span className="error-campo" id="nombre-error">
                   <IconoError /> {erroresFormulario.nombre}
                 </span>
               )}
@@ -538,9 +621,11 @@ console.log("¿Es conflicto?", datos.conflicto);
                 onChange={manejarCambio}
                 placeholder="Ej. Boda, Cumpleaños, Corporativo"
                 aria-invalid={!!erroresFormulario.tipo}
+                aria-describedby={erroresFormulario.tipo ? "tipo-error" : undefined}
+                aria-required="true"
               />
               {erroresFormulario.tipo && (
-                <span className="error-campo">
+                <span className="error-campo" id="tipo-error">
                   <IconoError /> {erroresFormulario.tipo}
                 </span>
               )}
@@ -556,9 +641,11 @@ console.log("¿Es conflicto?", datos.conflicto);
                 onChange={manejarCambio}
                 placeholder="Nombre de la persona o empresa que contrata"
                 aria-invalid={!!erroresFormulario.cliente}
+                aria-describedby={erroresFormulario.cliente ? "cliente-error" : undefined}
+                aria-required="true"
               />
               {erroresFormulario.cliente && (
-                <span className="error-campo">
+                <span className="error-campo" id="cliente-error">
                   <IconoError /> {erroresFormulario.cliente}
                 </span>
               )}
@@ -575,13 +662,15 @@ console.log("¿Es conflicto?", datos.conflicto);
                 min={ahoraLocalInput()}
                 max={dentroDeAniosInput(10)}
                 aria-invalid={!!erroresFormulario.fecha_hora}
+                aria-describedby={erroresFormulario.fecha_hora ? "fecha_hora-error" : "fecha_hora-ayuda"}
+                aria-required="true"
               />
               {erroresFormulario.fecha_hora ? (
-                <span className="error-campo">
+                <span className="error-campo" id="fecha_hora-error">
                   <IconoError /> {erroresFormulario.fecha_hora}
                 </span>
               ) : (
-                <span className="texto-ayuda-campo">
+                <span className="texto-ayuda-campo" id="fecha_hora-ayuda">
                   Elige la fecha y la hora reales del evento. Deben ser futuras: no puedes
                   agendar un evento en una hora que ya pasó.
                 </span>
@@ -598,13 +687,15 @@ console.log("¿Es conflicto?", datos.conflicto);
                 onChange={manejarCambio}
                 placeholder="Salón, dirección o ciudad"
                 aria-invalid={!!erroresFormulario.lugar}
+                aria-describedby={erroresFormulario.lugar ? "lugar-error" : "lugar-ayuda"}
+                aria-required="true"
               />
               {erroresFormulario.lugar ? (
-                <span className="error-campo">
+                <span className="error-campo" id="lugar-error">
                   <IconoError /> {erroresFormulario.lugar}
                 </span>
               ) : (
-                <span className="texto-ayuda-campo">
+                <span className="texto-ayuda-campo" id="lugar-ayuda">
                   Mínimo 3 caracteres, con letras (ej. "Salón Los Almendros", no "pan").
                 </span>
               )}
@@ -626,13 +717,15 @@ console.log("¿Es conflicto?", datos.conflicto);
                 maxLength={10}
                 inputMode="numeric"
                 aria-invalid={!!erroresFormulario.plazo_limite}
+                aria-describedby={erroresFormulario.plazo_limite ? "plazo_limite-error" : "plazo_limite-ayuda"}
+                aria-required="true"
               />
               {erroresFormulario.plazo_limite ? (
-                <span className="error-campo">
+                <span className="error-campo" id="plazo_limite-error">
                   <IconoError /> {erroresFormulario.plazo_limite}
                 </span>
               ) : (
-              <span className="texto-ayuda-campo">
+              <span className="texto-ayuda-campo" id="plazo_limite-ayuda">
                 Fecha máxima para tener todo listo antes del evento. Debe ser hoy o futura.
               </span>
               )}
@@ -649,26 +742,39 @@ console.log("¿Es conflicto?", datos.conflicto);
             crear el evento sin gestiones y agregarlas después desde su página.
           </p>
 
-          <div className="tarjeta">
+          <div className="tarjeta bloque-nueva-gestion">
+            <p className="solo-lector" role="status" aria-live="polite">
+              {avisoLista}
+            </p>
             {subtareas.length === 0 ? (
               <p className="estado-vacio">
                 Aún no has agregado ninguna gestión logística. Usa el formulario de
                 abajo para sumar la primera.
               </p>
             ) : (
-              <ul className="lista-subtareas">
-                {subtareas.map((s, index) => (
-                  <li key={index}>
-                    <span>
-                      <strong>{s.nombre}</strong> — plazo{" "}
-                      {formatearFechaVisual(s.plazo)} — {s.horas_estimadas} h
-                    </span>
-                    <button type="button" onClick={() => quitarSubtarea(index)}>
-                      Quitar
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ul className="lista-subtareas" aria-label="Gestiones agregadas">
+                  {subtareas.map((s, index) => (
+                    <li key={index}>
+                      <span>
+                        <strong>{s.nombre}</strong> — plazo{" "}
+                        {formatearFechaVisual(s.plazo)} — {s.horas_estimadas} h
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => quitarSubtarea(index)}
+                        aria-label={`Quitar la gestión ${s.nombre}`}
+                      >
+                        Quitar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <p className="resumen-plan">
+                  Total del plan: <strong>{subtareas.reduce((t, s) => t + Number(s.horas_estimadas || 0), 0)} h</strong>{" "}
+                  en {subtareas.length} {subtareas.length === 1 ? "gestión" : "gestiones"}.
+                </p>
+              </>
             )}
 
             <div className="campo">
@@ -681,9 +787,11 @@ console.log("¿Es conflicto?", datos.conflicto);
                 onChange={manejarCambioSubtarea}
                 placeholder="Ej. Reservar salón"
                 aria-invalid={!!errorNombreSubtarea}
+                aria-describedby={errorNombreSubtarea ? "subtarea-nombre-error" : undefined}
+                onKeyDown={enterAgregaGestion}
               />
               {errorNombreSubtarea && (
-                <span className="error-campo">
+                <span className="error-campo" id="subtarea-nombre-error">
                   <IconoError /> {errorNombreSubtarea}
                 </span>
               )}
@@ -705,14 +813,30 @@ console.log("¿Es conflicto?", datos.conflicto);
                 maxLength={10}
                 inputMode="numeric"
                 aria-invalid={!!errorPlazoSubtarea}
+                aria-describedby={errorPlazoSubtarea ? "subtarea-plazo-error" : "subtarea-plazo-ayuda"}
+                onKeyDown={enterAgregaGestion}
               />
               {errorPlazoSubtarea ?(
-                <span className="error-campo">
+                <span className="error-campo" id="subtarea-plazo-error">
                   <IconoError /> {errorPlazoSubtarea}
                 </span>
               ) : (
-                <span className="texto-ayuda-campo">
+                <span className="texto-ayuda-campo" id="subtarea-plazo-ayuda">
                   Debe ser hoy o una fecha futura (dd/mm/aaaa).
+                  {plazoNuevaISO && limiteDiario !== null && (
+                    <span
+                      className={
+                        horasYaEnFecha >= limiteDiario
+                          ? "carga-dia carga-dia-llena"
+                          : "carga-dia"
+                      }
+                    >
+                      {" "}Ese día ya tienes {horasYaEnFecha} h de {limiteDiario} h
+                      {horasYaEnFecha >= limiteDiario
+                        ? ": está lleno, elige otra fecha."
+                        : ` (quedan ${limiteDiario - horasYaEnFecha} h libres).`}
+                    </span>
+                  )}
                 </span>
               )}
             </div>
@@ -729,13 +853,15 @@ console.log("¿Es conflicto?", datos.conflicto);
                 placeholder="Ej. 4"
                 maxLength={2}
                 aria-invalid={!!errorHorasSubtarea}
+                aria-describedby={errorHorasSubtarea ? "subtarea-horas-error" : "subtarea-horas-ayuda"}
+                onKeyDown={enterAgregaGestion}
               />
               {errorHorasSubtarea ? (
-                <span className="error-campo">
+                <span className="error-campo" id="subtarea-horas-error">
                   <IconoError /> {errorHorasSubtarea}
                 </span>
               ) : (
-                <span className="texto-ayuda-campo">
+                <span className="texto-ayuda-campo" id="subtarea-horas-ayuda">
                   Número entero entre 1 y 12 (sin decimales).
               </span>
               )}
@@ -746,7 +872,8 @@ console.log("¿Es conflicto?", datos.conflicto);
             </button>
           </div>
 
-          {/* Estados UX visibles: carga, éxito y error */}
+          {/* Estados UX visibles: carga, éxito y error (anunciados por lector de pantalla) */}
+          <div role="status" aria-live="polite">
           {estadoEnvio === "guardando-evento" && (
             <p className="alerta alerta-carga">
               <span className="spinner" /> Creando el evento...
@@ -763,6 +890,7 @@ console.log("¿Es conflicto?", datos.conflicto);
               <IconoExito /> Evento creado correctamente. Redirigiendo al detalle...
             </p>
           )}
+          </div>
 
           <button type="submit" className="boton-ancho" disabled={enviando}>
             {enviando ? "Guardando..." : "Crear evento"}

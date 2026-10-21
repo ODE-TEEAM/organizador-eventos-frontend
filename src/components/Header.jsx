@@ -45,9 +45,13 @@ export default function Header({ onCambiarLimite, solicitudAbrirLimite = 0 }) {
 
   return (
     <header className="header">
+      {/* Primer elemento con Tab: permite saltar el menú e ir directo al contenido */}
+      <a href="#contenido" className="saltar-contenido">
+        Saltar al contenido principal
+      </a>
       <div className="header-interior">
-        <NavLink to="/hoy" className="header-marca">
-          <img src="/hestia-logo.png" alt="HEstia" className="header-logo" />
+        <NavLink to="/hoy" className="header-marca" aria-label="HEstia, ir a Hoy">
+          <img src="/hestia-logo.png" alt="" className="header-logo" />
           <span className="header-marca-nombre">HEstia</span>
         </NavLink>
 
