@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
+import FocoDialogos from "./components/FocoDialogos";
 import Login from "./pages/Login";
 import Registro from "./pages/Registro";
 import Hoy from "./pages/Hoy";
@@ -11,6 +12,7 @@ import Progreso from "./pages/Progreso";
 function App() {
   return (
     <BrowserRouter>
+      <FocoDialogos />
       <Routes>
         {/* Rutas públicas */}
         <Route path="/login" element={<Login />} />

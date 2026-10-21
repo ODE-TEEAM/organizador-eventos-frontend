@@ -806,7 +806,7 @@ function Evento() {
     return (
       <div className="pagina pagina-oscura">
         <Header />
-        <main className="contenedor contenedor-estrecho pagina-formulario">
+        <main id="contenido" tabIndex={-1} className="contenedor contenedor-estrecho pagina-formulario">
           <p className="alerta alerta-error">
             <IconoError /> {error}
           </p>
@@ -822,9 +822,9 @@ function Evento() {
     return (
       <div className="pagina pagina-oscura">
         <Header />
-        <main className="contenedor contenedor-estrecho pagina-formulario">
-          <p className="alerta alerta-carga">
-            <span className="spinner" /> Cargando el evento...
+        <main id="contenido" tabIndex={-1} className="contenedor contenedor-estrecho pagina-formulario">
+          <p className="alerta alerta-carga" role="status" aria-live="polite">
+            <span className="spinner" aria-hidden="true" /> Cargando el evento...
           </p>
         </main>
       </div>
@@ -841,7 +841,7 @@ function Evento() {
     <div className="pagina pagina-oscura">
       <Header />
 
-      <main className="contenedor contenedor-estrecho pagina-formulario">
+      <main id="contenido" tabIndex={-1} className="contenedor contenedor-estrecho pagina-formulario">
         {erroresSubtareas?.length > 0 && (
           <div className="alerta-limite-horas" role="alert">
             <div className="alerta-limite-encabezado">
@@ -938,7 +938,7 @@ function Evento() {
         )}
 
         {exitoMsg && (
-          <p className="alerta alerta-exito">
+          <p className="alerta alerta-exito" role="status">
             <IconoExito /> {exitoMsg}
           </p>
         )}
@@ -975,10 +975,11 @@ function Evento() {
                     value={form.nombre}
                     onChange={manejarCambioEdit}
                     aria-invalid={!!erroresEdit.nombre}
+                    aria-describedby={erroresEdit.nombre ? "edit-nombre-error" : undefined}
                     disabled={guardando}
                   />
                   {erroresEdit.nombre && (
-                    <span className="error-campo">
+                    <span className="error-campo" id="edit-nombre-error">
                       <IconoError /> {erroresEdit.nombre}
                     </span>
                   )}
@@ -993,10 +994,11 @@ function Evento() {
                     value={form.tipo}
                     onChange={manejarCambioEdit}
                     aria-invalid={!!erroresEdit.tipo}
+                    aria-describedby={erroresEdit.tipo ? "edit-tipo-error" : undefined}
                     disabled={guardando}
                   />
                   {erroresEdit.tipo && (
-                    <span className="error-campo">
+                    <span className="error-campo" id="edit-tipo-error">
                       <IconoError /> {erroresEdit.tipo}
                     </span>
                   )}
@@ -1011,10 +1013,11 @@ function Evento() {
                     value={form.cliente}
                     onChange={manejarCambioEdit}
                     aria-invalid={!!erroresEdit.cliente}
+                    aria-describedby={erroresEdit.cliente ? "edit-cliente-error" : undefined}
                     disabled={guardando}
                   />
                   {erroresEdit.cliente && (
-                    <span className="error-campo">
+                    <span className="error-campo" id="edit-cliente-error">
                       <IconoError /> {erroresEdit.cliente}
                     </span>
                   )}
@@ -1031,10 +1034,11 @@ function Evento() {
                     min={ahoraLocalInput()}
                     max={dentroDeAniosInput(10)}
                     aria-invalid={!!erroresEdit.fecha_hora}
+                    aria-describedby={erroresEdit.fecha_hora ? "edit-fecha-error" : undefined}
                     disabled={guardando}
                   />
                   {erroresEdit.fecha_hora && (
-                    <span className="error-campo">
+                    <span className="error-campo" id="edit-fecha-error">
                       <IconoError /> {erroresEdit.fecha_hora}
                     </span>
                   )}
@@ -1055,10 +1059,11 @@ function Evento() {
                         : undefined
                     }
                     aria-invalid={!!erroresEdit.plazo_limite}
+                    aria-describedby={erroresEdit.plazo_limite ? "edit-plazo-error" : undefined}
                     disabled={guardando}
                   />
                   {erroresEdit.plazo_limite && (
-                    <span className="error-campo">
+                    <span className="error-campo" id="edit-plazo-error">
                       <IconoError /> {erroresEdit.plazo_limite}
                     </span>
                   )}
@@ -1073,10 +1078,11 @@ function Evento() {
                     value={form.lugar}
                     onChange={manejarCambioEdit}
                     aria-invalid={!!erroresEdit.lugar}
+                    aria-describedby={erroresEdit.lugar ? "edit-lugar-error" : undefined}
                     disabled={guardando}
                   />
                   {erroresEdit.lugar && (
-                    <span className="error-campo">
+                    <span className="error-campo" id="edit-lugar-error">
                       <IconoError /> {erroresEdit.lugar}
                     </span>
                   )}
@@ -1153,8 +1159,8 @@ function Evento() {
           <div className="barra-progreso-bloque">
             <div className="barra-progreso-meta">
               <span>
-                Preparación: {progreso.completadas} de {progreso.total} gestión
-                {progreso.total === 1 ? "" : "es"}
+                Preparación: {progreso.completadas} de {progreso.total}{" "}
+                {progreso.total === 1 ? "gestión" : "gestiones"}
               </span>
               <strong>{progreso.porcentaje}%</strong>
             </div>
@@ -1413,6 +1419,7 @@ function Evento() {
                           type="button"
                           className="boton-secundario"
                           onClick={() => abrirReactivar(subtarea)}
+                          aria-label={`Reactivar la gestión ${subtarea.nombre}`}
                         >
                           Reactivar
                         </button>
@@ -1423,6 +1430,7 @@ function Evento() {
                               type="button"
                               className="boton-secundario"
                               onClick={() => abrirHecha(subtarea)}
+                              aria-label={`Marcar como hecha la gestión ${subtarea.nombre}`}
                             >
                               Hecha
                             </button>
@@ -1430,6 +1438,7 @@ function Evento() {
                               type="button"
                               className="boton-secundario"
                               onClick={() => abrirPosponer(subtarea)}
+                              aria-label={`Posponer la gestión ${subtarea.nombre}`}
                             >
                               Posponer
                             </button>
@@ -1440,6 +1449,7 @@ function Evento() {
                         type="button"
                         className="boton-secundario"
                         onClick={() => iniciarEdicionSubtarea(subtarea)}
+                        aria-label={`Editar la gestión ${subtarea.nombre}`}
                       >
                         <IconoLapiz /> Editar
                       </button>
@@ -1447,6 +1457,7 @@ function Evento() {
                         type="button"
                         className="boton-secundario"
                         onClick={() => pedirEliminarSubtarea(subtarea)}
+                        aria-label={`Eliminar la gestión ${subtarea.nombre}`}
                       >
                         Eliminar
                       </button>
@@ -1479,6 +1490,7 @@ function Evento() {
             onMouseDown={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
+            aria-labelledby="accion-evento-titulo"
             style={{
               background: "#fff",
               borderRadius: "16px",
@@ -1496,7 +1508,7 @@ function Evento() {
               }}
             >
               <div>
-                <h2 style={{ margin: 0, fontSize: "1.25rem" }}>
+                <h2 id="accion-evento-titulo" style={{ margin: 0, fontSize: "1.25rem" }}>
                   {gestionAccion.tipo === "hecha"
                     ? "Marcar como hecha"
                     : gestionAccion.tipo === "reactivar"

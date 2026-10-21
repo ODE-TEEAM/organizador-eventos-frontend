@@ -229,7 +229,7 @@ const guardarLimiteHoras = async (e) => {
 
   return (
     <div className="modal-fondo" onMouseDown={onCerrar}>
-      <div className="modal" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div className="modal" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Mi perfil">
         <div className="modal-cabecera">
           <div>
             <h2 className="modal-titulo">Mi perfil</h2>

@@ -1414,3 +1414,129 @@ p {
 .pagina-oscura .evento-barra-progreso .barra-progreso-meta strong {
   color: var(--violeta-fuerte);
 }
+/* ============================================================
+   Accesibilidad (Sprint 5 · WCAG 2.1 AA)
+   - Foco visible para TODA navegación por teclado
+   - Enlace "Saltar al contenido"
+   - Contraste mínimo 4.5:1 en textos pequeños de ayuda / error
+   - Respeto a "reducir movimiento" del sistema operativo
+   ============================================================ */
+
+/* Foco visible (solo con teclado: :focus-visible no se activa con clic) */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[tabindex]:not([tabindex='-1']):focus-visible,
+input[type='radio']:focus-visible,
+input[type='checkbox']:focus-visible {
+  outline: 3px solid var(--lima);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgba(21, 10, 46, 0.85);
+  border-radius: 8px;
+}
+
+/* Sobre superficies claras (tarjetas, modales, menú) el anillo es violeta */
+.tarjeta a:focus-visible,
+.tarjeta button:focus-visible,
+.modal a:focus-visible,
+.modal button:focus-visible,
+.modal input[type='radio']:focus-visible,
+.usuario-menu button:focus-visible,
+.gestion-card a:focus-visible,
+.gestion-card button:focus-visible,
+.formulario-nueva-subtarea button:focus-visible,
+.gestion-tarjeta button:focus-visible {
+  outline-color: var(--violeta-fuerte);
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.9);
+}
+
+/* Inputs, selects y textareas: anillo grueso además del borde */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--violeta-fuerte);
+  outline-offset: 1px;
+}
+
+/* El <main>/<section> destino del salto no debe mostrar anillo */
+#contenido:focus {
+  outline: none;
+}
+
+.saltar-contenido {
+  position: absolute;
+  left: 1rem;
+  top: -100px;
+  z-index: 10000;
+  background: var(--lima);
+  color: var(--tinta);
+  font-weight: 800;
+  padding: 0.75rem 1.1rem;
+  border-radius: var(--radio);
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.saltar-contenido:focus {
+  top: 0.75rem;
+}
+
+/* Texto solo para lectores de pantalla */
+.solo-lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Contraste: rojo de errores y grises de ayuda pasan 4.5:1 sobre blanco */
+.error-campo {
+  color: var(--rojo-texto) !important;
+}
+
+.tarjeta .texto-ayuda-campo,
+.modal .texto-ayuda-campo,
+.formulario-nueva-subtarea .texto-ayuda-campo {
+  color: #5f5880 !important;
+}
+
+.campo input::placeholder,
+.campo textarea::placeholder,
+.campo-subtarea input::placeholder {
+  color: #77708f;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---- Sprint 5: Progreso con siguiente paso y orden por cercanía ---- */
+.progreso-orden {
+  margin: -0.4rem 0 0.9rem;
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.evento-progreso-siguiente,
+.evento-progreso-aviso {
+  margin: 0.6rem 0 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.evento-progreso-aviso {
+  color: var(--ambar-texto);
+}
