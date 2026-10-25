@@ -318,13 +318,20 @@ function Progreso() {
               )}
             </section>
 
-            <p className="progreso-nota">
+                        <p
+              className="progreso-nota"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: "0.6rem",
+              }}
+            >
               Las pendientes son las de hoy y las próximas. Las vencidas
-              necesitan atención:{" "}
-              <Link to="/hoy" className="enlace-secundario">
-                ir a la vista de hoy
+              necesitan atención.
+              <Link to="/hoy" className="boton-accion-subtarea">
+                Ir a la vista de hoy
               </Link>
-              .
             </p>
           </>
         )}

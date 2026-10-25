@@ -1210,6 +1210,9 @@ function Evento() {
                 {mostrarFormularioSubtarea ? "Cancelar" : "Agregar gestión"}
               </span>
             </button>
+            <Link to="/hoy" className="boton-accion-subtarea">
+              Volver a hoy
+            </Link>
           </div>
         </div>
 
