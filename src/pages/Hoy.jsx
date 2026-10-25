@@ -1205,7 +1205,7 @@ export default function Hoy() {
                 </h2>
                 <p className="modal-subtitulo">
                   {gestionAccion.tipo === "hecha"
-                    ? `¿Ya terminaste "${gestionAccion.gestion.titulo}"? Al confirmar, deja de aparecer en lo urgente de hoy y suma al avance del evento.`
+                    ? `¿Ya terminaste "${gestionAccion.gestion.titulo}"? Al confirmar, suma al avance del evento.`
                     : `Vas a posponer "${gestionAccion.gestion.titulo}". Dejará de aparecer como urgente. Puedes anotar por qué.`}
                 </p>
               </div>
