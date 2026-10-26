@@ -855,3 +855,144 @@ hr {
 .carga-dia-llena {
   color: var(--rojo-texto);
 }
+
+/* ---- Sprint 5 (pruebas de usuario) ---- */
+
+/* Semáforo en las tarjetas de gestión: verde hecha, amarillo pendiente o
+   pospuesta, rojo vencida. */
+.gestion-tarjeta[data-semaforo='verde'] {
+  border-left-color: var(--verde);
+}
+
+.gestion-tarjeta[data-semaforo='amarillo'] {
+  border-left-color: #f2a33c;
+}
+
+.gestion-tarjeta[data-semaforo='rojo'] {
+  border-left-color: var(--rojo);
+}
+
+/* Pospuesta: antes toda la tarjeta quedaba opaca y "Reactivar" parecía
+   desactivado. Ahora solo se atenúa el texto; los botones quedan normales. */
+.gestion-tarjeta[data-estado='POSPUESTA'],
+.gestion-tarjeta[data-estado='pospuesta'] {
+  opacity: 1;
+}
+
+.gestion-tarjeta[data-estado='pospuesta'] .gestion-info {
+  opacity: 0.75;
+}
+
+.boton-reactivar {
+  padding: 0.55rem 1.2rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--violeta) 0%, var(--violeta-fuerte) 100%);
+  border-color: var(--violeta-fuerte);
+  color: #fff;
+  box-shadow: 0 6px 18px -8px rgba(109, 77, 246, 0.7);
+}
+
+.boton-reactivar:hover {
+  background: var(--violeta-fuerte);
+}
+
+/* Carga masiva de gestiones */
+.formulario-nueva-subtarea > .texto-ayuda-campo {
+  display: block;
+  margin: -12px 0 16px;
+}
+
+.fila-masiva {
+  padding: 12px 0;
+  border-top: 1px dashed var(--borde);
+}
+
+.fila-masiva:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.fila-masiva .fila-nueva-subtarea {
+  align-items: flex-end;
+}
+
+.fila-masiva .error-campo {
+  margin-top: 8px;
+}
+
+.boton-quitar-fila {
+  align-self: flex-end;
+  height: 42px;
+  padding: 0 14px;
+  border: 1.5px solid var(--rojo-suave);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--rojo-texto);
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.boton-quitar-fila:hover {
+  background: var(--rojo-suave);
+}
+
+.acciones-masivas {
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Aviso con acción rápida: plazo después de la fecha del evento */
+.aviso-fecha-evento {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--ambar-suave);
+  color: var(--ambar-texto);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.aviso-fecha-evento p {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  flex: 1 1 260px;
+}
+
+@media (min-width: 701px) {
+  .fila-masiva .fila-nueva-subtarea {
+    grid-template-columns: 2fr 1.4fr 1fr auto;
+  }
+}
+
+/* Límite diario visible en /crear con acceso directo para cambiarlo */
+.aviso-limite-diario {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--teal-suave);
+  color: var(--teal-texto);
+  font-size: 0.9rem;
+}
+
+.aviso-limite-diario p {
+  margin: 0;
+}
+
+.boton-accion-rapida {
+  align-self: flex-start;
+  margin-top: 8px;
+}

@@ -3,7 +3,13 @@ import { Link } from "react-router-dom";
 import Header from "../components/Header";
 import AvatarAnimal from "../components/AvatarAnimal";
 import { getAuthHeaders, obtenerNombre, obtenerUsuario } from "../auth";
-import { hoyLocalISO, dentroDeAniosInput, mensajeDeError } from "../utils/validacion";
+import {
+  hoyLocalISO,
+  dentroDeAniosInput,
+  mensajeDeError,
+  LIMITE_DIARIO_MAX,
+  avisarCambioDatos,
+} from "../utils/validacion";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
@@ -138,8 +144,8 @@ export default function Hoy() {
 
     const limite = Number(nuevoLimiteHoras);
 
-    if (!Number.isInteger(limite) || limite < 1 || limite > 16) {
-      setMensajeLimiteHoras("El límite debe ser un número entero entre 1 y 16.");
+    if (!Number.isInteger(limite) || limite < 1 || limite > LIMITE_DIARIO_MAX) {
+      setMensajeLimiteHoras(`El límite debe ser un número entero entre 1 y ${LIMITE_DIARIO_MAX}.`);
       return;
     }
 
@@ -169,6 +175,7 @@ export default function Hoy() {
       setLimiteHorasDiarias(Number(datos.limite_horas_diarias ?? limite));
       setModoResolucionHoras(null);
       setMostrarResolucionHoras(false);
+      avisarCambioDatos();
       await cargarGestiones();
     } catch (err) {
       console.error(err);
@@ -303,6 +310,7 @@ export default function Hoy() {
       setExitoAccion(
         `Nueva fecha guardada para "${gestionEditando.titulo}". Actualizamos lo urgente de hoy.`
       );
+      avisarCambioDatos();
       await cargarGestiones();
     } catch (err) {
       console.error(err);
@@ -349,6 +357,7 @@ export default function Hoy() {
       setExitoAccion(
         `"${titulo}" quedó para el ${fechaTexto}. Actualizamos lo urgente de hoy.`
       );
+      avisarCambioDatos();
       await cargarGestiones();
     } catch (err) {
       console.error(err);
@@ -428,6 +437,7 @@ export default function Hoy() {
             ? `Pospuesta. "${gestion.titulo}" salió de lo urgente y guardamos tu nota.`
             : `Pospuesta. "${gestion.titulo}" salió de lo urgente de hoy.`
       );
+      avisarCambioDatos();
       await cargarGestiones();
     } catch (err) {
       console.error(err);
@@ -982,7 +992,7 @@ export default function Hoy() {
                     id="nuevo-limite-horas"
                     type="number"
                     min="1"
-                    max="16"
+                    max={LIMITE_DIARIO_MAX}
                     step="1"
                     value={nuevoLimiteHoras}
                     onChange={(e) => {
@@ -993,7 +1003,7 @@ export default function Hoy() {
                     required
                   />
                   <span className="texto-ayuda-campo">
-                    Introduce un número entero entre 1 y 16.
+                    Introduce un número entero entre 1 y {LIMITE_DIARIO_MAX}.
                   </span>
                 </div>
 

@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { cerrarSesion, obtenerUsuario } from '../auth';
 import AvatarAnimal, { animalDe } from './AvatarAnimal';
 import ModalPerfil from './ModalPerfil';
+import ResumenDia from './ResumenDia';
 
 export default function Header({ onCambiarLimite, solicitudAbrirLimite = 0 }) {
   const navigate = useNavigate();
@@ -69,6 +70,8 @@ export default function Header({ onCambiarLimite, solicitudAbrirLimite = 0 }) {
             Progreso
           </NavLink>
         </nav>
+
+        <ResumenDia />
 
         <div className="header-acciones" ref={menuRef}>
           <button

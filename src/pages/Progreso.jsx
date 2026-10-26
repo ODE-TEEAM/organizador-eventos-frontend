@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Header from "../components/Header";
 import { getAuthHeaders } from "../auth";
+import { semaforoEvento } from "../utils/semaforo";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
 
@@ -246,6 +247,13 @@ function Progreso() {
                   tienen gestiones pendientes.
                 </p>
               )}
+              {eventos.length > 0 && (
+                <p className="leyenda-semaforo">
+                  <span className="semaforo" data-color="verde">Completo</span>
+                  <span className="semaforo" data-color="amarillo">En curso</span>
+                  <span className="semaforo" data-color="rojo">Con vencidas</span>
+                </p>
+              )}
 
               {eventos.length === 0 ? (
                 <div className="estado-caja">
@@ -266,12 +274,14 @@ function Progreso() {
                     );
                     const siguiente = proximaPendiente(ev.subtareas || []);
                     const dias = diasParaEvento(ev.fecha_hora);
+                    const semaforo = semaforoEvento(ev.subtareas || []);
                     return (
                       <Link
                         key={ev.id}
                         to={`/evento/${ev.id}`}
                         className="evento-progreso-card"
-                        aria-label={`${ev.nombre}: ${porcentaje}% preparado, ${completadas} de ${total} gestiones hechas. ${textoDias(dias)}. Ver detalle.`}
+                        data-semaforo={semaforo.color}
+                        aria-label={`${ev.nombre}: ${porcentaje}% preparado, ${completadas} de ${total} gestiones hechas. Estado: ${semaforo.texto}. ${textoDias(dias)}. Ver detalle.`}
                       >
                         <div className="evento-progreso-cabecera">
                           <div>
@@ -286,8 +296,13 @@ function Progreso() {
                               {dias !== null ? ` · ${textoDias(dias)}` : ""}
                             </p>
                           </div>
-                          <span className="badge badge-violeta">
-                            {porcentaje}%
+                          <span className="evento-progreso-estado">
+                            <span className="semaforo" data-color={semaforo.color}>
+                              {semaforo.texto}
+                            </span>
+                            <span className="badge badge-violeta">
+                              {porcentaje}%
+                            </span>
                           </span>
                         </div>
                         {total === 0 ? (

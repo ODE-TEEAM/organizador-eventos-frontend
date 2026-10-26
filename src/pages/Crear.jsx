@@ -13,6 +13,8 @@ import {
   mensajeDeError,
   enfocarPrimerError,
   normalizarErroresBackend,
+  LIMITE_DIARIO_MAX,
+  EVENTO_DATOS_CAMBIARON,
 } from "../utils/validacion";
 import "./formularios.css";
 
@@ -142,27 +144,38 @@ function Crear() {
 
   useEffect(() => {
     let cancelado = false;
-    fetch(`${API_URL}/hoy/`, { headers: getAuthHeaders() })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((datos) => {
-        if (cancelado || !datos) return;
-        const mapa = {};
-        for (const g of datos.gestiones || []) {
-          if (!g.fecha) continue;
-          mapa[g.fecha] = (mapa[g.fecha] || 0) + Number(g.horas_estimadas || 0);
-        }
-        setHorasOcupadasPorFecha(mapa);
-        if (datos.limite_horas_diarias != null) {
-          setLimiteDiario(Number(datos.limite_horas_diarias));
-        }
-      })
-      .catch(() => {
-        // Sin datos de carga: el backend sigue validando el límite al guardar.
-      });
+    const cargarCargaDelDia = () =>
+      fetch(`${API_URL}/hoy/`, { headers: getAuthHeaders() })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((datos) => {
+          if (cancelado || !datos) return;
+          const mapa = {};
+          for (const g of datos.gestiones || []) {
+            if (!g.fecha) continue;
+            mapa[g.fecha] = (mapa[g.fecha] || 0) + Number(g.horas_estimadas || 0);
+          }
+          setHorasOcupadasPorFecha(mapa);
+          if (datos.limite_horas_diarias != null) {
+            setLimiteDiario(Number(datos.limite_horas_diarias));
+          }
+        })
+        .catch(() => {
+          // Sin datos de carga: el backend sigue validando el límite al guardar.
+        });
+
+    cargarCargaDelDia();
+    // Si el organizador cambia su límite desde "Cambiar límite", se recalcula.
+    window.addEventListener(EVENTO_DATOS_CAMBIARON, cargarCargaDelDia);
     return () => {
       cancelado = true;
+      window.removeEventListener(EVENTO_DATOS_CAMBIARON, cargarCargaDelDia);
     };
   }, []);
+
+  // Tope de horas de UNA gestión: nunca más que el límite diario.
+  const horasMaximas = Math.min(HORAS_MAX, limiteDiario ?? HORAS_MAX);
+  // Plazo de gestión que quedó después del día del evento (acción rápida).
+  const [plazoFueraDelEvento, setPlazoFueraDelEvento] = useState("");
 
   // Horas de una fecha: otros eventos + gestiones ya agregadas en esta lista.
   const horasDelDia = (fechaISO, excluirIndice = -1) =>
@@ -313,17 +326,16 @@ function Crear() {
     return errores;
   };
 
-  const agregarSubtarea = () => {
+  const agregarSubtarea = (fechaHoraEvento = formulario.fecha_hora) => {
     setErrorNombreSubtarea("");
     setErrorPlazoSubtarea("");
     setErrorHorasSubtarea("");
+    setPlazoFueraDelEvento("");
 
     let hayError = false;
 
     if (!esTextoValido(nuevaSubtarea.nombre)) {
-      setErrorNombreSubtarea(
-        "Escribe un nombre real para la gestión (mínimo 3 caracteres, con letras)."
-      );
+      setErrorNombreSubtarea("Escribe un nombre de al menos 3 letras.");
       hayError = true;
     }
 
@@ -334,20 +346,20 @@ function Crear() {
     }
 
     if (!nuevaSubtarea.plazo) {
-      setErrorPlazoSubtarea("El plazo de la gestión es obligatorio.");
+      setErrorPlazoSubtarea("Escribe el plazo.");
       hayError = true;
     } else if (!plazoISO || !esFechaFutura(plazoISO)) {
-      setErrorPlazoSubtarea(
-        "Escribe una fecha válida (dd/mm/aaaa), hoy o futura."
-      );
+      setErrorPlazoSubtarea("Usa una fecha de hoy en adelante (dd/mm/aaaa).");
       hayError = true;
     } else if (
-      formulario.fecha_hora &&
-      plazoISO > formulario.fecha_hora.slice(0, 10)
+      fechaHoraEvento &&
+      plazoISO > fechaHoraEvento.slice(0, 10)
     ) {
       setErrorPlazoSubtarea(
-        "El plazo de la gestión no puede ser después de la fecha del evento."
+        `Queda después del evento (${formatearFechaVisual(fechaHoraEvento.slice(0, 10))}).`
       );
+      // Acción rápida: ofrecer mover el evento a esa fecha sin perder la gestión.
+      setPlazoFueraDelEvento(plazoISO);
       hayError = true;
     }
 
@@ -358,10 +370,10 @@ function Crear() {
       !horasStr ||
       !Number.isInteger(horas) ||
       horas < HORAS_MIN ||
-      horas > HORAS_MAX
+      horas > horasMaximas
     ) {
       setErrorHorasSubtarea(
-        `Las horas estimadas deben ser un número entero entre ${HORAS_MIN} y ${HORAS_MAX}.`
+        `Usa un número entero entre ${HORAS_MIN} y ${horasMaximas}.`
       );
       hayError = true;
     }
@@ -374,11 +386,11 @@ function Crear() {
       if (total > limiteDiario) {
         const disponibles = Math.max(0, limiteDiario - ocupadas);
         setErrorHorasSubtarea(
-          `Conflicto de horas: el ${formatearFechaVisual(plazoISO)} ya tienes ${ocupadas} h ` +
-            `asignadas; con esta gestión serían ${total} h y tu límite diario es ${limiteDiario} h. ` +
+          `El ${formatearFechaVisual(plazoISO)} ya tienes ${ocupadas} h; con esta serían ` +
+            `${total} h y tu límite es ${limiteDiario} h. ` +
             (disponibles > 0
-              ? `Usa máximo ${disponibles} h o elige otra fecha.`
-              : "Ese día ya está lleno: elige otra fecha.")
+              ? `Usa máximo ${disponibles} h, elige otra fecha o cambia tu límite.`
+              : "Ese día está lleno: elige otra fecha o cambia tu límite.")
         );
         hayError = true;
       }
@@ -406,6 +418,15 @@ function Crear() {
     setAvisoLista(`Gestión "${nuevaSubtarea.nombre.trim()}" agregada a la lista.`);
     // Deja el foco listo para escribir la siguiente gestión.
     document.getElementById("subtarea-nombre")?.focus();
+  };
+
+  const moverEventoAlPlazo = () => {
+    if (!plazoFueraDelEvento) return;
+    const hora = formulario.fecha_hora ? formulario.fecha_hora.slice(11, 16) : "";
+    const nuevaFechaHora = `${plazoFueraDelEvento}T${hora || "12:00"}`;
+    setFormulario({ ...formulario, fecha_hora: nuevaFechaHora });
+    setErroresFormulario({ ...erroresFormulario, fecha_hora: undefined });
+    agregarSubtarea(nuevaFechaHora);
   };
 
   const quitarSubtarea = (index) => {
@@ -578,8 +599,7 @@ const crearSubtareaEnBackend = async (eventoId, subtarea) => {
       <main id="contenido" tabIndex={-1} className="contenedor contenedor-estrecho pagina-formulario">
         <h1>Crear evento</h1>
         <p className="subtitulo">
-          Completa estos dos pasos y te llevaremos directo a la página del evento,
-          donde verás todo lo que acabas de registrar.
+          Dos pasos: los datos del evento y, si quieres, sus gestiones.
         </p>
 
         
@@ -639,14 +659,19 @@ const crearSubtareaEnBackend = async (eventoId, subtarea) => {
                 name="cliente"
                 value={formulario.cliente}
                 onChange={manejarCambio}
-                placeholder="Nombre de la persona o empresa que contrata"
+                placeholder="Ej. Camila Ríos o Café Aroma SAS"
                 aria-invalid={!!erroresFormulario.cliente}
-                aria-describedby={erroresFormulario.cliente ? "cliente-error" : undefined}
+                aria-describedby={erroresFormulario.cliente ? "cliente-error" : "cliente-ayuda"}
                 aria-required="true"
               />
-              {erroresFormulario.cliente && (
+              {erroresFormulario.cliente ? (
                 <span className="error-campo" id="cliente-error">
                   <IconoError /> {erroresFormulario.cliente}
+                </span>
+              ) : (
+                <span className="texto-ayuda-campo" id="cliente-ayuda">
+                  La persona o empresa que te contrata el evento, no tu nombre como
+                  organizador.
                 </span>
               )}
             </div>
@@ -671,8 +696,7 @@ const crearSubtareaEnBackend = async (eventoId, subtarea) => {
                 </span>
               ) : (
                 <span className="texto-ayuda-campo" id="fecha_hora-ayuda">
-                  Elige la fecha y la hora reales del evento. Deben ser futuras: no puedes
-                  agendar un evento en una hora que ya pasó.
+                  Debe ser una fecha y hora futuras.
                 </span>
               )}
             </div>
@@ -696,7 +720,7 @@ const crearSubtareaEnBackend = async (eventoId, subtarea) => {
                 </span>
               ) : (
                 <span className="texto-ayuda-campo" id="lugar-ayuda">
-                  Mínimo 3 caracteres, con letras (ej. "Salón Los Almendros", no "pan").
+                  Ej. Salón Los Almendros, Cali.
                 </span>
               )}
             </div>
@@ -726,7 +750,7 @@ const crearSubtareaEnBackend = async (eventoId, subtarea) => {
                 </span>
               ) : (
               <span className="texto-ayuda-campo" id="plazo_limite-ayuda">
-                Fecha máxima para tener todo listo antes del evento. Debe ser hoy o futura.
+                Hasta cuándo debe estar todo listo (no después del evento).
               </span>
               )}
             </div>
@@ -737,12 +761,26 @@ const crearSubtareaEnBackend = async (eventoId, subtarea) => {
             <h2>Plan logístico</h2>
           </div>
           <p className="texto-ayuda">
-            Agrega aquí las gestiones logísticas del evento (reservar salón, enviar
-            invitaciones, confirmar catering...). Este paso es opcional: puedes
-            crear el evento sin gestiones y agregarlas después desde su página.
+            Opcional. Ej.: reservar salón, enviar invitaciones, confirmar catering.
           </p>
 
           <div className="tarjeta bloque-nueva-gestion">
+            {/* Límite diario siempre visible y editable desde aquí (usuario 1) */}
+            {limiteDiario !== null && (
+              <div className="aviso-limite-diario">
+                <p>
+                  Tu límite es de <strong>{limiteDiario} h por día</strong>. Puedes
+                  subirlo hasta {LIMITE_DIARIO_MAX} h.
+                </p>
+                <button
+                  type="button"
+                  className="boton-secundario"
+                  onClick={() => setSolicitudAbrirLimite((n) => n + 1)}
+                >
+                  Cambiar límite
+                </button>
+              </div>
+            )}
             <p className="solo-lector" role="status" aria-live="polite">
               {avisoLista}
             </p>
@@ -816,13 +854,25 @@ const crearSubtareaEnBackend = async (eventoId, subtarea) => {
                 aria-describedby={errorPlazoSubtarea ? "subtarea-plazo-error" : "subtarea-plazo-ayuda"}
                 onKeyDown={enterAgregaGestion}
               />
-              {errorPlazoSubtarea ?(
-                <span className="error-campo" id="subtarea-plazo-error">
-                  <IconoError /> {errorPlazoSubtarea}
-                </span>
+              {errorPlazoSubtarea ? (
+                <>
+                  <span className="error-campo" id="subtarea-plazo-error">
+                    <IconoError /> {errorPlazoSubtarea}
+                  </span>
+                  {plazoFueraDelEvento && (
+                    <button
+                      type="button"
+                      className="boton-secundario boton-accion-rapida"
+                      onClick={moverEventoAlPlazo}
+                    >
+                      Mover el evento al {formatearFechaVisual(plazoFueraDelEvento)} y
+                      agregar
+                    </button>
+                  )}
+                </>
               ) : (
                 <span className="texto-ayuda-campo" id="subtarea-plazo-ayuda">
-                  Debe ser hoy o una fecha futura (dd/mm/aaaa).
+                  Hoy o una fecha futura.
                   {plazoNuevaISO && limiteDiario !== null && (
                     <span
                       className={
@@ -862,12 +912,12 @@ const crearSubtareaEnBackend = async (eventoId, subtarea) => {
                 </span>
               ) : (
                 <span className="texto-ayuda-campo" id="subtarea-horas-ayuda">
-                  Número entero entre 1 y 12 (sin decimales).
+                  De 1 a {horasMaximas} h (sin decimales).
               </span>
               )}
             </div>
 
-            <button type="button" className="boton-principal" onClick={agregarSubtarea}>
+            <button type="button" className="boton-principal" onClick={() => agregarSubtarea()}>
               Agregar gestión a la lista
             </button>
           </div>

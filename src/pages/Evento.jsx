@@ -11,21 +11,13 @@ import {
   enfocarPrimerError,
   normalizarErroresBackend,
   resumenErrores,
+  HORAS_MAX,
+  avisarCambioDatos,
 } from "../utils/validacion";
+import { semaforoGestion } from "../utils/semaforo";
 import "./formularios.css";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
-
-const ESTADO_LABEL = {
-  PENDIENTE: "Pendiente",
-  pendiente: "Pendiente",
-  EJECUTADA: "Hecha",
-  ejecutada: "Hecha",
-  completada: "Hecha",
-  COMPLETADA: "Hecha",
-  POSPUESTA: "Pospuesta",
-  pospuesta: "Pospuesta",
-};
 
 const LONGITUD_MINIMA_TEXTO = 3;
 const CONTIENE_LETRA = /[a-zA-ZÀ-ÿ]/;
@@ -131,6 +123,45 @@ function IconoLapiz() {
   );
 }
 
+// Fila vacía del formulario de carga masiva de gestiones.
+let contadorFilas = 0;
+function filaVacia() {
+  contadorFilas += 1;
+  return { clave: contadorFilas, nombre: "", plazo: "", horas_estimadas: 2, error: "" };
+}
+
+// "YYYY-MM-DD" en formato dd/mm/aaaa para los mensajes.
+function fechaCorta(iso) {
+  if (!iso) return "";
+  const [a, m, d] = String(iso).slice(0, 10).split("-");
+  return `${d}/${m}/${a}`;
+}
+
+// Aviso con acción rápida cuando el plazo de una gestión cae después del día
+// del evento (pruebas de usuario, Sprint 5): en vez de solo bloquear, ofrece
+// mover la fecha del evento sin perder lo que el organizador ya escribió.
+function AvisoFechaEvento({ fechaEvento, plazoMaximo, onMover, moviendo }) {
+  return (
+    <div className="aviso-fecha-evento" role="alert">
+      <p>
+        <IconoError /> El plazo {fechaCorta(plazoMaximo)} queda después del
+        evento ({fechaCorta(fechaEvento)}). Una gestión debe estar lista antes
+        del evento.
+      </p>
+      <button
+        type="button"
+        className="boton-principal"
+        onClick={onMover}
+        disabled={moviendo}
+      >
+        {moviendo
+          ? "Moviendo el evento..."
+          : `Mover el evento al ${fechaCorta(plazoMaximo)} y guardar`}
+      </button>
+    </div>
+  );
+}
+
 function Evento() {
   const { id } = useParams();
   const location = useLocation();
@@ -162,13 +193,13 @@ function Evento() {
   const [errorSubtarea, setErrorSubtarea] = useState("");
 
   const [mostrarFormularioSubtarea, setMostrarFormularioSubtarea] = useState(false);
-  const [nuevaSubtarea, setNuevaSubtarea] = useState({
-    nombre: "",
-    plazo: "",
-    horas_estimadas: 2,
-  });
+  // Carga masiva: varias filas de gestiones que se guardan con un solo botón.
+  const [filasNuevas, setFilasNuevas] = useState(() => [filaVacia()]);
   const [guardandoNuevaSubtarea, setGuardandoNuevaSubtarea] = useState(false);
   const [errorNuevaSubtarea, setErrorNuevaSubtarea] = useState("");
+  // Plazo que quedó después del evento: { plazo, origen: "nuevas" | "edicion" }.
+  const [conflictoFechaEvento, setConflictoFechaEvento] = useState(null);
+  const [moviendoEvento, setMoviendoEvento] = useState(false);
 
   const [errorAccion, setErrorAccion] = useState("");
   const [eliminandoEvento, setEliminandoEvento] = useState(false);
@@ -346,6 +377,7 @@ function Evento() {
 
       setEvento(datos);
       setEditando(false);
+      avisarCambioDatos();
       setExitoMsg("Listo. Guardamos los cambios del evento.");
     } catch (err) {
       console.error(err);
@@ -371,6 +403,7 @@ function Evento() {
   const cancelarEdicionSubtarea = () => {
     setSubtareaEditando(null);
     setErrorSubtarea("");
+    setConflictoFechaEvento(null);
   };
 
   const manejarCambioSubtarea = (e) => {
@@ -380,7 +413,7 @@ function Evento() {
     });
   };
 
-  const guardarSubtarea = async (e, subtareaId) => {
+  const guardarSubtarea = async (e, subtareaId, { omitirFechaEvento = false } = {}) => {
     e.preventDefault();
     setErrorSubtarea("");
 
@@ -398,13 +431,21 @@ function Evento() {
 
     if (
       !Number.isInteger(Number(formSubtarea.horas_estimadas)) ||
-      Number(formSubtarea.horas_estimadas) < 1
+      Number(formSubtarea.horas_estimadas) < 1 ||
+      Number(formSubtarea.horas_estimadas) > HORAS_MAX
     ) {
       setErrorSubtarea(
-        "Las horas estimadas deben ser un número entero positivo."
+        `Las horas deben ser un número entero entre 1 y ${HORAS_MAX}.`
       );
       return;
     }
+
+    const fechaEv = fechaEventoISO(evento);
+    if (!omitirFechaEvento && fechaEv && formSubtarea.plazo > fechaEv) {
+      setConflictoFechaEvento({ plazo: formSubtarea.plazo, origen: "edicion" });
+      return;
+    }
+    setConflictoFechaEvento(null);
 
     setGuardandoSubtarea(true);
 
@@ -446,6 +487,7 @@ function Evento() {
       }));
 
       setSubtareaEditando(null);
+      avisarCambioDatos();
       setExitoMsg("La gestión se actualizó.");
     } catch (err) {
       console.error(err);
@@ -457,74 +499,171 @@ function Evento() {
     }
   };
 
-  const crearNuevaSubtarea = async (e) => {
-    e.preventDefault();
+  const cambiarFila = (clave, campo, valor) => {
+    setFilasNuevas((filas) =>
+      filas.map((f) => (f.clave === clave ? { ...f, [campo]: valor, error: "" } : f))
+    );
+    setErrorNuevaSubtarea("");
+    setConflictoFechaEvento(null);
+  };
+
+  const agregarFila = () => {
+    setFilasNuevas((filas) => [...filas, filaVacia()]);
+  };
+
+  const quitarFila = (clave) => {
+    setFilasNuevas((filas) =>
+      filas.length === 1 ? filas : filas.filter((f) => f.clave !== clave)
+    );
+  };
+
+  // Valida una fila; devuelve el mensaje de error o "".
+  const errorDeFila = (fila) => {
+    if (!esTextoValido(fila.nombre)) {
+      return "Escribe un nombre de al menos 3 caracteres.";
+    }
+    if (!fila.plazo) return "Elige el plazo.";
+    if (fila.plazo < hoyISOLocal()) return "El plazo no puede ser una fecha pasada.";
+    const horas = Number(fila.horas_estimadas);
+    if (!Number.isInteger(horas) || horas < 1 || horas > HORAS_MAX) {
+      return `Las horas deben ser un número entero entre 1 y ${HORAS_MAX}.`;
+    }
+    return "";
+  };
+
+  // Guarda todas las filas de una vez (sin confirmar una por una).
+  // Las que fallen quedan en el formulario con su error; las demás se guardan.
+  const crearNuevasSubtareas = async (e, { omitirFechaEvento = false } = {}) => {
+    e?.preventDefault?.();
     setErrorNuevaSubtarea("");
 
-    const nombre = nuevaSubtarea.nombre.trim();
-    const plazo = nuevaSubtarea.plazo;
-    const horas = Number(nuevaSubtarea.horas_estimadas);
-
-    if (!nombre || !plazo || !Number.isFinite(horas) || horas <= 0) {
-      setErrorNuevaSubtarea(
-        "Completa nombre, fecha y horas para agregar la gestión."
-      );
+    const revisadas = filasNuevas.map((f) => ({ ...f, error: errorDeFila(f) }));
+    if (revisadas.some((f) => f.error)) {
+      setFilasNuevas(revisadas);
+      setErrorNuevaSubtarea("Revisa las filas marcadas antes de guardar.");
       return;
     }
 
-    try {
-      setGuardandoNuevaSubtarea(true);
+    const fechaEv = fechaEventoISO(evento);
+    const plazoMaximo = revisadas.map((f) => f.plazo).sort().at(-1);
+    if (!omitirFechaEvento && fechaEv && plazoMaximo > fechaEv) {
+      setConflictoFechaEvento({ plazo: plazoMaximo, origen: "nuevas" });
+      return;
+    }
+    setConflictoFechaEvento(null);
 
-      const respuesta = await fetch(`${API_URL}/eventos/${id}/subtareas/`, {
-        method: "POST",
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          nombre,
-          plazo,
-          horas_estimadas: horas,
-        }),
-      });
+    setGuardandoNuevaSubtarea(true);
+    const guardadas = [];
+    const pendientes = [];
 
-      const datos = await respuesta.json().catch(() => ({}));
+    for (const fila of revisadas) {
+      try {
+        const respuesta = await fetch(`${API_URL}/eventos/${id}/subtareas/`, {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            nombre: fila.nombre.trim(),
+            plazo: fila.plazo,
+            horas_estimadas: Number(fila.horas_estimadas),
+          }),
+        });
+        const datos = await respuesta.json().catch(() => ({}));
 
-      if (!respuesta.ok) {
-        setErrorNuevaSubtarea(
-          datos.mensaje ||
+        if (!respuesta.ok) {
+          const mensaje =
+            datos.mensaje ||
             datos.detail ||
             datos.error ||
-            Object.values(datos)
-              .flat()
-              .filter((valor) => typeof valor === "string")
-              .join(" ") ||
-            "No pudimos agregar la gestión."
-        );
-        return;
+            resumenErrores(normalizarErroresBackend(datos)) ||
+            "No pudimos guardar esta gestión.";
+          pendientes.push({ ...fila, error: mensaje });
+        } else {
+          guardadas.push(datos);
+        }
+      } catch {
+        pendientes.push({ ...fila, error: "Sin conexión. Intenta de nuevo." });
       }
+    }
 
+    if (guardadas.length > 0) {
       setEvento((anterior) => ({
         ...anterior,
-        subtareas: [...(anterior.subtareas || []), datos].sort((a, b) =>
+        subtareas: [...(anterior.subtareas || []), ...guardadas].sort((a, b) =>
           a.plazo.localeCompare(b.plazo)
         ),
       }));
+      avisarCambioDatos();
+    }
 
-      setNuevaSubtarea({
-        nombre: "",
-        plazo: "",
-        horas_estimadas: 2,
-      });
-
+    if (pendientes.length === 0) {
+      setFilasNuevas([filaVacia()]);
       setMostrarFormularioSubtarea(false);
-      setExitoMsg("Gestión agregada al plan.");
-    } catch {
-      setErrorNuevaSubtarea(
-        "No pudimos guardar el cambio. Intenta de nuevo en unos segundos."
+      setExitoMsg(
+        guardadas.length === 1
+          ? "Gestión agregada al plan."
+          : `Agregamos ${guardadas.length} gestiones al plan.`
       );
+    } else {
+      setFilasNuevas(pendientes);
+      setErrorNuevaSubtarea(
+        guardadas.length > 0
+          ? `Guardamos ${guardadas.length}; ${pendientes.length} quedaron abajo para corregir.`
+          : "No pudimos guardar las gestiones. Revisa el motivo en cada fila."
+      );
+    }
+
+    setGuardandoNuevaSubtarea(false);
+  };
+
+  // Acción rápida: mueve el día del evento (misma hora) al plazo de la gestión
+  // y, ya movido, guarda lo que el organizador estaba intentando guardar.
+  const moverFechaEventoYGuardar = async () => {
+    if (!conflictoFechaEvento) return;
+    const { plazo, origen } = conflictoFechaEvento;
+    const actual = new Date(evento.fecha_hora);
+    const p = (n) => String(n).padStart(2, "0");
+    const hora = isNaN(actual.getTime())
+      ? "12:00"
+      : `${p(actual.getHours())}:${p(actual.getMinutes())}`;
+
+    setMoviendoEvento(true);
+    try {
+      const respuesta = await fetch(`${API_URL}/eventos/${id}/`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          fecha_hora: new Date(`${plazo}T${hora}`).toISOString(),
+        }),
+      });
+      const datos = await respuesta.json().catch(() => ({}));
+
+      if (!respuesta.ok) {
+        const texto =
+          resumenErrores(normalizarErroresBackend(datos)) ||
+          "No pudimos mover la fecha del evento.";
+        if (origen === "nuevas") setErrorNuevaSubtarea(texto);
+        else setErrorSubtarea(texto);
+        return;
+      }
+
+      setEvento((anterior) => ({ ...anterior, ...datos, subtareas: anterior.subtareas }));
+      setConflictoFechaEvento(null);
+      setExitoMsg(`Movimos el evento al ${fechaCorta(plazo)}.`);
+      avisarCambioDatos();
+
+      if (origen === "nuevas") {
+        await crearNuevasSubtareas(null, { omitirFechaEvento: true });
+      } else if (subtareaEditando) {
+        await guardarSubtarea({ preventDefault() {} }, subtareaEditando, {
+          omitirFechaEvento: true,
+        });
+      }
+    } catch {
+      const texto = "No pudimos conectar con el servidor. Intenta de nuevo.";
+      if (origen === "nuevas") setErrorNuevaSubtarea(texto);
+      else setErrorSubtarea(texto);
     } finally {
-      setGuardandoNuevaSubtarea(false);
+      setMoviendoEvento(false);
     }
   };
 
@@ -577,6 +716,7 @@ function Evento() {
       }
 
       setSubtareaAEliminar(null);
+      avisarCambioDatos();
       setExitoMsg(`Quitamos "${nombre}" del plan logístico.`);
     } catch (err) {
       console.error(err);
@@ -779,6 +919,7 @@ function Evento() {
       }));
 
       const fechaLegible = formatearSoloFecha(fechaReactivar);
+      avisarCambioDatos();
       setGestionAccion(null);
       setNotaPosponer("");
       setFechaReactivar("");
@@ -1013,12 +1154,17 @@ function Evento() {
                     value={form.cliente}
                     onChange={manejarCambioEdit}
                     aria-invalid={!!erroresEdit.cliente}
-                    aria-describedby={erroresEdit.cliente ? "edit-cliente-error" : undefined}
+                    aria-describedby={erroresEdit.cliente ? "edit-cliente-error" : "edit-cliente-ayuda"}
+                    placeholder="Persona o empresa que te contrata"
                     disabled={guardando}
                   />
-                  {erroresEdit.cliente && (
+                  {erroresEdit.cliente ? (
                     <span className="error-campo" id="edit-cliente-error">
                       <IconoError /> {erroresEdit.cliente}
+                    </span>
+                  ) : (
+                    <span className="texto-ayuda-campo" id="edit-cliente-ayuda">
+                      Quien contrata el evento, no tu nombre como organizador.
                     </span>
                   )}
                 </div>
@@ -1203,11 +1349,12 @@ function Evento() {
               onClick={() => {
                 setMostrarFormularioSubtarea((anterior) => !anterior);
                 setErrorNuevaSubtarea("");
+                setConflictoFechaEvento(null);
               }}
             >
               <ListPlus size={18} />
               <span>
-                {mostrarFormularioSubtarea ? "Cancelar" : "Agregar gestión"}
+                {mostrarFormularioSubtarea ? "Cancelar" : "Agregar gestiones"}
               </span>
             </button>
             <Link to="/hoy" className="boton-accion-subtarea">
@@ -1219,65 +1366,90 @@ function Evento() {
         {mostrarFormularioSubtarea && (
           <form
             className="formulario-nueva-subtarea"
-            onSubmit={crearNuevaSubtarea}
+            onSubmit={crearNuevasSubtareas}
+            noValidate
           >
-            <h3>Agregar gestión</h3>
+            <h3>Agregar gestiones</h3>
+            <p className="texto-ayuda-campo">
+              Escribe varias gestiones y guárdalas todas juntas. Las horas van de
+              1 a {HORAS_MAX}.
+            </p>
 
-            <div className="fila-nueva-subtarea">
-              <div className="campo-subtarea">
-                <label htmlFor="nueva-subtarea-nombre">Nombre</label>
-                <input
-                  id="nueva-subtarea-nombre"
-                  type="text"
-                  value={nuevaSubtarea.nombre}
-                  onChange={(e) =>
-                    setNuevaSubtarea((anterior) => ({
-                      ...anterior,
-                      nombre: e.target.value,
-                    }))
-                  }
-                  placeholder="Ej. Confirmar invitados"
-                  required
-                  disabled={guardandoNuevaSubtarea}
-                />
-              </div>
+            {filasNuevas.map((fila, indice) => (
+              <div className="fila-masiva" key={fila.clave}>
+                <div className="fila-nueva-subtarea">
+                  <div className="campo-subtarea">
+                    <label htmlFor={`nueva-nombre-${fila.clave}`}>
+                      Gestión {indice + 1}
+                    </label>
+                    <input
+                      id={`nueva-nombre-${fila.clave}`}
+                      type="text"
+                      value={fila.nombre}
+                      onChange={(e) => cambiarFila(fila.clave, "nombre", e.target.value)}
+                      placeholder="Ej. Confirmar invitados"
+                      aria-invalid={!!fila.error}
+                      aria-describedby={fila.error ? `nueva-error-${fila.clave}` : undefined}
+                      disabled={guardandoNuevaSubtarea}
+                    />
+                  </div>
 
-              <div className="campo-subtarea">
-                <label htmlFor="nueva-subtarea-plazo">Plazo</label>
-                <input
-                  id="nueva-subtarea-plazo"
-                  type="date"
-                  value={nuevaSubtarea.plazo}
-                  onChange={(e) =>
-                    setNuevaSubtarea((anterior) => ({
-                      ...anterior,
-                      plazo: e.target.value,
-                    }))
-                  }
-                  required
-                  disabled={guardandoNuevaSubtarea}
-                />
-              </div>
+                  <div className="campo-subtarea">
+                    <label htmlFor={`nueva-plazo-${fila.clave}`}>Plazo</label>
+                    <input
+                      id={`nueva-plazo-${fila.clave}`}
+                      type="date"
+                      value={fila.plazo}
+                      min={hoyISOLocal()}
+                      onChange={(e) => cambiarFila(fila.clave, "plazo", e.target.value)}
+                      disabled={guardandoNuevaSubtarea}
+                    />
+                  </div>
 
-              <div className="campo-subtarea campo-horas">
-                <label htmlFor="nueva-subtarea-horas">Horas estimadas</label>
-                <input
-                  id="nueva-subtarea-horas"
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={nuevaSubtarea.horas_estimadas}
-                  onChange={(e) =>
-                    setNuevaSubtarea((anterior) => ({
-                      ...anterior,
-                      horas_estimadas: e.target.value,
-                    }))
-                  }
-                  required
-                  disabled={guardandoNuevaSubtarea}
-                />
+                  <div className="campo-subtarea campo-horas">
+                    <label htmlFor={`nueva-horas-${fila.clave}`}>Horas</label>
+                    <input
+                      id={`nueva-horas-${fila.clave}`}
+                      type="number"
+                      min="1"
+                      max={HORAS_MAX}
+                      step="1"
+                      value={fila.horas_estimadas}
+                      onChange={(e) =>
+                        cambiarFila(fila.clave, "horas_estimadas", e.target.value)
+                      }
+                      disabled={guardandoNuevaSubtarea}
+                    />
+                  </div>
+
+                  {filasNuevas.length > 1 && (
+                    <button
+                      type="button"
+                      className="boton-quitar-fila"
+                      onClick={() => quitarFila(fila.clave)}
+                      disabled={guardandoNuevaSubtarea}
+                      aria-label={`Quitar la fila ${indice + 1}`}
+                    >
+                      Quitar
+                    </button>
+                  )}
+                </div>
+                {fila.error && (
+                  <span className="error-campo" id={`nueva-error-${fila.clave}`}>
+                    <IconoError /> {fila.error}
+                  </span>
+                )}
               </div>
-            </div>
+            ))}
+
+            {conflictoFechaEvento?.origen === "nuevas" && (
+              <AvisoFechaEvento
+                fechaEvento={fechaEventoISO(evento)}
+                plazoMaximo={conflictoFechaEvento.plazo}
+                onMover={moverFechaEventoYGuardar}
+                moviendo={moviendoEvento}
+              />
+            )}
 
             {errorNuevaSubtarea && (
               <p className="alerta alerta-error" role="alert">
@@ -1285,13 +1457,25 @@ function Evento() {
               </p>
             )}
 
-            <div className="acciones-nueva-subtarea">
+            <div className="acciones-nueva-subtarea acciones-masivas">
+              <button
+                type="button"
+                className="boton-secundario"
+                onClick={agregarFila}
+                disabled={guardandoNuevaSubtarea}
+              >
+                + Otra gestión
+              </button>
               <button
                 type="submit"
                 className="boton-principal"
                 disabled={guardandoNuevaSubtarea}
               >
-                {guardandoNuevaSubtarea ? "Guardando..." : "Agregar gestión"}
+                {guardandoNuevaSubtarea
+                  ? "Guardando..."
+                  : filasNuevas.length === 1
+                    ? "Guardar gestión"
+                    : `Guardar ${filasNuevas.length} gestiones`}
               </button>
             </div>
           </form>
@@ -1309,6 +1493,7 @@ function Evento() {
                 key={subtarea.id}
                 className="gestion-tarjeta"
                 data-estado={subtarea.estado}
+                data-semaforo={semaforoGestion(subtarea).color}
               >
                 {subtareaEditando === subtarea.id ? (
                   <form
@@ -1325,6 +1510,15 @@ function Evento() {
                       >
                         <IconoError /> {errorSubtarea}
                       </p>
+                    )}
+
+                    {conflictoFechaEvento?.origen === "edicion" && (
+                      <AvisoFechaEvento
+                        fechaEvento={fechaEventoISO(evento)}
+                        plazoMaximo={conflictoFechaEvento.plazo}
+                        onMover={moverFechaEventoYGuardar}
+                        moviendo={moviendoEvento}
+                      />
                     )}
 
                     <div className="campo">
@@ -1361,6 +1555,7 @@ function Evento() {
                         type="number"
                         name="horas_estimadas"
                         min="1"
+                        max={HORAS_MAX}
                         step="1"
                         value={formSubtarea.horas_estimadas}
                         onChange={manejarCambioSubtarea}
@@ -1407,10 +1602,10 @@ function Evento() {
                     </div>
 
                     <span
-                      className="badge-estado"
-                      data-estado={subtarea.estado}
+                      className="semaforo"
+                      data-color={semaforoGestion(subtarea).color}
                     >
-                      {ESTADO_LABEL[subtarea.estado] || subtarea.estado}
+                      {semaforoGestion(subtarea).texto}
                     </span>
 
                     <div
@@ -1420,7 +1615,7 @@ function Evento() {
                       {esPospuesta(subtarea.estado) ? (
                         <button
                           type="button"
-                          className="boton-secundario"
+                          className="boton-principal boton-reactivar"
                           onClick={() => abrirReactivar(subtarea)}
                           aria-label={`Reactivar la gestión ${subtarea.nombre}`}
                         >

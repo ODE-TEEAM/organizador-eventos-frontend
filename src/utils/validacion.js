@@ -3,7 +3,18 @@
 
 export const ANIO_MAXIMO = 2100;
 export const HORAS_MIN = 1;
-export const HORAS_MAX = 12;
+// Topes de horas (alineados con el backend). Una gestión nunca puede pasar
+// el límite diario del organizador, que a su vez puede llegar a 24 h.
+export const HORAS_MAX = 24;
+export const LIMITE_DIARIO_MAX = 24;
+
+// Aviso global de "cambiaron gestiones/eventos": el encabezado lo escucha
+// para refrescar las horas libres de hoy y el progreso general.
+export const EVENTO_DATOS_CAMBIARON = "hestia:datos-cambiaron";
+
+export function avisarCambioDatos() {
+  window.dispatchEvent(new Event(EVENTO_DATOS_CAMBIARON));
+}
 
 // Etiquetas en español para los campos que puede devolver el backend.
 const ETIQUETAS_CAMPOS = {

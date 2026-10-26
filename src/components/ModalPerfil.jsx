@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { obtenerUsuario, actualizarSesion, getAuthHeaders } from '../auth';
 import AvatarAnimal, { animalDe } from './AvatarAnimal';
 import InputPassword from './InputPassword';
+import { LIMITE_DIARIO_MAX, avisarCambioDatos } from '../utils/validacion';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 
@@ -135,9 +136,9 @@ const guardarLimiteHoras = async (e) => {
 
   const valor = Number(limiteHoras);
 
-  if (!Number.isInteger(valor) || valor < 1 || valor > 16) {
+  if (!Number.isInteger(valor) || valor < 1 || valor > LIMITE_DIARIO_MAX) {
     setErrores({
-      limite: 'El límite diario debe estar entre 1 y 16 horas.',
+      limite: `El límite diario debe estar entre 1 y ${LIMITE_DIARIO_MAX} horas.`,
     });
     return;
   }
@@ -169,6 +170,7 @@ const guardarLimiteHoras = async (e) => {
     }
 
     setLimiteHoras(datos.limite_horas_diarias);
+    avisarCambioDatos();
     setExito(
       `¡Listo! Tu límite diario quedó en ${datos.limite_horas_diarias} horas.`
     );
@@ -398,9 +400,9 @@ const guardarLimiteHoras = async (e) => {
         id="perfil-limite-horas"
         type="number"
         min="1"
-        max="16"
+        max={LIMITE_DIARIO_MAX}
         step="1"
-        placeholder="Ingresa un valor de 1 a 16 horas"
+        placeholder={`De 1 a ${LIMITE_DIARIO_MAX} horas`}
         value={limiteHoras}
         onChange={(e) => {
           setLimiteHoras(e.target.value);
@@ -411,7 +413,7 @@ const guardarLimiteHoras = async (e) => {
       />
 
       <span className="texto-ayuda-campo">
-        Puedes elegir entre 1 y 16 horas.
+        Puedes elegir entre 1 y {LIMITE_DIARIO_MAX} horas.
       </span>
 
       {errores.limite && (
