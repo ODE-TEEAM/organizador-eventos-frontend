@@ -3,10 +3,11 @@
 
 export const ANIO_MAXIMO = 2100;
 export const HORAS_MIN = 1;
-// Topes de horas (alineados con el backend). Una gestión nunca puede pasar
-// el límite diario del organizador, que a su vez puede llegar a 24 h.
-export const HORAS_MAX = 24;
-export const LIMITE_DIARIO_MAX = 24;
+// Topes de horas (alineados con el backend). El límite diario personalizado
+// es de máximo 16 h (regla del Sprint 3) y una gestión no puede pasar de 12 h
+// ni del límite diario del organizador.
+export const HORAS_MAX = 12;
+export const LIMITE_DIARIO_MAX = 16;
 
 // Aviso global de "cambiaron gestiones/eventos": el encabezado lo escucha
 // para refrescar las horas libres de hoy y el progreso general.
