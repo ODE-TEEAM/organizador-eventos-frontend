@@ -1338,7 +1338,11 @@ function Evento() {
 
         <div className="nueva-subtarea-contenedor">
           <div className="acciones-subtareas">
-            <Link to="/crear" className="boton-accion-subtarea">
+            <Link
+              to="/crear"
+              className="boton-accion-subtarea"
+              style={{ minWidth: "200px", justifyContent: "center" }}
+            >
               <CalendarPlus size={18} />
               <span>Crear otro evento</span>
             </Link>
@@ -1346,6 +1350,7 @@ function Evento() {
             <button
               type="button"
               className="boton-accion-subtarea"
+              style={{ minWidth: "200px", justifyContent: "center" }}
               onClick={() => {
                 setMostrarFormularioSubtarea((anterior) => !anterior);
                 setErrorNuevaSubtarea("");
@@ -1357,9 +1362,6 @@ function Evento() {
                 {mostrarFormularioSubtarea ? "Cancelar" : "Agregar gestiones"}
               </span>
             </button>
-            <Link to="/hoy" className="boton-accion-subtarea">
-              Volver a hoy
-            </Link>
           </div>
         </div>
 
@@ -1666,6 +1668,20 @@ function Evento() {
             ))}
           </div>
         )}
+
+        <div
+          className="evento-volver-hoy"
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginTop: "2rem",
+            marginBottom: "0.5rem",
+          }}
+        >
+          <Link to="/hoy" className="boton-accion-subtarea">
+            Volver a hoy
+          </Link>
+        </div>
       </main>
 
       {gestionAccion && (
