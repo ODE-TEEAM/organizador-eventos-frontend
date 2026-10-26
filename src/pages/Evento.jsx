@@ -1378,7 +1378,11 @@ function Evento() {
             </p>
 
             {filasNuevas.map((fila, indice) => (
-              <div className="fila-masiva" key={fila.clave}>
+              <div
+                className="fila-masiva"
+                key={fila.clave}
+                data-varias={filasNuevas.length > 1 ? "true" : "false"}
+              >
                 <div className="fila-nueva-subtarea">
                   <div className="campo-subtarea">
                     <label htmlFor={`nueva-nombre-${fila.clave}`}>

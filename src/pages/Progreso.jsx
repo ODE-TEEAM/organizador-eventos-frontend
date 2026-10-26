@@ -249,9 +249,10 @@ function Progreso() {
               )}
               {eventos.length > 0 && (
                 <p className="leyenda-semaforo">
+                  <span className="leyenda-titulo">Estado del evento:</span>
                   <span className="semaforo" data-color="verde">Completo</span>
                   <span className="semaforo" data-color="amarillo">En curso</span>
-                  <span className="semaforo" data-color="rojo">Con vencidas</span>
+                  <span className="semaforo" data-color="rojo">Atrasado</span>
                 </p>
               )}
 
@@ -296,13 +297,8 @@ function Progreso() {
                               {dias !== null ? ` · ${textoDias(dias)}` : ""}
                             </p>
                           </div>
-                          <span className="evento-progreso-estado">
-                            <span className="semaforo" data-color={semaforo.color}>
-                              {semaforo.texto}
-                            </span>
-                            <span className="badge badge-violeta">
-                              {porcentaje}%
-                            </span>
+                          <span className="semaforo" data-color={semaforo.color}>
+                            {semaforo.texto}
                           </span>
                         </div>
                         {total === 0 ? (

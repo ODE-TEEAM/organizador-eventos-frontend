@@ -60,11 +60,13 @@ export default function ResumenDia() {
 
   const { limite, ocupadas, libres, porcentaje, hechas, total } = datos;
   const nivel = libres < 0 ? "excedido" : libres === 0 ? "lleno" : "ok";
+  // Parte 1: tiempo de HOY (verde = hay horas libres, amarillo = día lleno,
+  // rojo = te pasas del límite). Parte 2: avance de TODAS las gestiones.
   const textoHoras =
     libres < 0
-      ? `Hoy te pasas ${-libres} h`
+      ? `Hoy: te pasas ${-libres} h`
       : libres === 0
-        ? "Hoy: día lleno"
+        ? "Hoy: sin horas libres"
         : `Hoy: ${libres} h libres`;
 
   return (
@@ -72,15 +74,16 @@ export default function ResumenDia() {
       to="/progreso"
       className="resumen-dia"
       data-nivel={nivel}
-      aria-label={`${textoHoras} de un límite de ${limite} horas (${ocupadas} h ocupadas). Avance general ${porcentaje}%, ${hechas} de ${total} gestiones hechas. Ver progreso.`}
-      title="Horas libres de hoy y avance general. Clic para ver el progreso."
+      aria-label={`${textoHoras} (${ocupadas} de ${limite} horas ocupadas). Avance total de tus gestiones: ${porcentaje}%, ${hechas} de ${total} hechas. Ver progreso.`}
+      title={`Hoy tienes ${ocupadas} de ${limite} h ocupadas. Avance total: ${hechas} de ${total} gestiones hechas.`}
     >
       <span className="resumen-dia-horas">
         <span className="resumen-dia-punto" aria-hidden="true" />
         {textoHoras}
-        <span className="resumen-dia-limite"> / {limite} h</span>
+        <span className="resumen-dia-limite"> de {limite} h</span>
       </span>
       <span className="resumen-dia-avance" aria-hidden="true">
+        <span className="resumen-dia-etiqueta">Avance total</span>
         <span className="resumen-dia-barra">
           <span style={{ width: `${porcentaje}%` }} />
         </span>

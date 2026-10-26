@@ -30,7 +30,10 @@ export function semaforoEvento(subtareas = [], hoy = hoyLocal()) {
   const colores = subtareas.map((s) => semaforoGestion(s, hoy).color);
   if (colores.includes("rojo")) {
     const vencidas = colores.filter((c) => c === "rojo").length;
-    return { color: "rojo", texto: vencidas === 1 ? "1 vencida" : `${vencidas} vencidas` };
+    return {
+      color: "rojo",
+      texto: `Atrasado · ${vencidas} ${vencidas === 1 ? "vencida" : "vencidas"}`,
+    };
   }
   if (colores.every((c) => c === "verde")) return { color: "verde", texto: "Completo" };
   return { color: "amarillo", texto: "En curso" };
