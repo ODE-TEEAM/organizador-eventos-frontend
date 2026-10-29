@@ -453,13 +453,14 @@ export default function Hoy() {
     <div className="pagina pagina-oscura">
       <Header />
 
-      <section id="contenido" tabIndex={-1} className="hero-hoy">
+      <main id="contenido" tabIndex={-1}>
+      <section className="hero-hoy" aria-labelledby="hoy-saludo">
         <div className="contenedor">
           <span className="hero-hoy-saludo">
             <span className="chip-punto" style={{ background: "var(--lima)" }} />
             {fechaLargaHoy()}
           </span>
-          <h1 className="hero-hoy-titulo">Hola, {nombre}</h1>
+          <h1 id="hoy-saludo" className="hero-hoy-titulo">Hola, {nombre}</h1>
           <p className="hero-hoy-sub">
             Estas son las gestiones que necesitan tu atención, de la más urgente
             a la más lejana.
@@ -501,7 +502,7 @@ export default function Hoy() {
         </div>
       </section>
 
-      <main className="contenedor" style={{ paddingBottom: "3.5rem" }}>
+      <div className="contenedor" style={{ paddingBottom: "3.5rem" }}>
         {exitoAccion && (
           <p
             className="alerta alerta-exito"
@@ -670,6 +671,7 @@ export default function Hoy() {
             )}
           </>
         )}
+      </div>
       </main>
 
       {mostrarResolucionHoras && (

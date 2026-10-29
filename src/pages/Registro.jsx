@@ -118,13 +118,14 @@ export default function Registro() {
   };
 
   return (
-    <div className="auth-pagina">
+    <main className="auth-pagina">
       {FLOTANTES.map((f, i) => (
         <AvatarAnimal
           key={i}
           indice={f.indice}
           size={f.size}
           className="auth-flotante"
+          decorativo
           style={f.style}
         />
       ))}
@@ -165,11 +166,12 @@ export default function Registro() {
                   value={form.nombre}
                   onChange={manejarCambio}
                   aria-invalid={!!errores.nombre}
+                  aria-describedby={errores.nombre ? "registro-nombre-error" : undefined}
                   disabled={loading}
                   autoComplete="name"
                 />
                 {errores.nombre && (
-                  <span className="error-campo">{errores.nombre}</span>
+                  <span className="error-campo" id="registro-nombre-error">{errores.nombre}</span>
                 )}
               </div>
 
@@ -183,10 +185,13 @@ export default function Registro() {
                   value={form.email}
                   onChange={manejarCambio}
                   aria-invalid={!!errores.email}
+                  aria-describedby={errores.email ? "registro-email-error" : undefined}
                   disabled={loading}
                   autoComplete="email"
                 />
-                {errores.email && <span className="error-campo">{errores.email}</span>}
+                {errores.email && (
+                  <span className="error-campo" id="registro-email-error">{errores.email}</span>
+                )}
               </div>
 
               <div className="campo">
@@ -198,11 +203,12 @@ export default function Registro() {
                   value={form.password}
                   onChange={manejarCambio}
                   ariaInvalid={!!errores.password}
+                  describedBy={errores.password ? "registro-password-error" : undefined}
                   disabled={loading}
                   autoComplete="new-password"
                 />
                 {errores.password && (
-                  <span className="error-campo">{errores.password}</span>
+                  <span className="error-campo" id="registro-password-error">{errores.password}</span>
                 )}
               </div>
 
@@ -215,22 +221,23 @@ export default function Registro() {
                   value={form.password2}
                   onChange={manejarCambio}
                   ariaInvalid={!!errores.password2}
+                  describedBy={errores.password2 ? "registro-password2-error" : undefined}
                   disabled={loading}
                   autoComplete="new-password"
                 />
                 {errores.password2 && (
-                  <span className="error-campo">{errores.password2}</span>
+                  <span className="error-campo" id="registro-password2-error">{errores.password2}</span>
                 )}
               </div>
 
               {errorGeneral && (
-                <p className="alerta alerta-error" style={{ margin: "0 0 1rem" }}>
+                <p className="alerta alerta-error" role="alert" style={{ margin: "0 0 1rem" }}>
                   {errorGeneral}
                 </p>
               )}
 
               <button type="submit" className="btn btn-primario btn-ancho" disabled={loading}>
-                {loading && <span className="spinner" />}
+                {loading && <span className="spinner" aria-hidden="true" />}
                 {loading ? "Creando cuenta..." : "Registrarme"}
               </button>
             </form>
@@ -241,6 +248,6 @@ export default function Registro() {
           </>
         )}
       </div>
-    </div>
+    </main>
   );
 }

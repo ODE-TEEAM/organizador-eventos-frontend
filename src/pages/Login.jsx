@@ -82,13 +82,14 @@ export default function Login() {
   };
 
   return (
-    <div className="auth-pagina">
+    <main className="auth-pagina">
       {FLOTANTES.map((f, i) => (
         <AvatarAnimal
           key={i}
           indice={f.indice}
           size={f.size}
           className="auth-flotante"
+          decorativo
           style={f.style}
         />
       ))}
@@ -115,9 +116,15 @@ export default function Login() {
                 if (errores.email) setErrores({ ...errores, email: undefined });
               }}
               aria-invalid={!!errores.email}
+              aria-describedby={errores.email ? "login-email-error" : undefined}
+              autoComplete="email"
               disabled={loading}
             />
-            {errores.email && <span className="error-campo">{errores.email}</span>}
+            {errores.email && (
+              <span className="error-campo" id="login-email-error">
+                {errores.email}
+              </span>
+            )}
           </div>
 
           <div className="campo">
@@ -133,22 +140,25 @@ export default function Login() {
                   setErrores({ ...errores, password: undefined });
               }}
               ariaInvalid={!!errores.password}
+              describedBy={errores.password ? "login-password-error" : undefined}
               disabled={loading}
               autoComplete="current-password"
             />
             {errores.password && (
-              <span className="error-campo">{errores.password}</span>
+              <span className="error-campo" id="login-password-error">
+                {errores.password}
+              </span>
             )}
           </div>
 
           {errorGeneral && (
-            <p className="alerta alerta-error" style={{ margin: "0 0 1rem" }}>
+            <p className="alerta alerta-error" role="alert" style={{ margin: "0 0 1rem" }}>
               {errorGeneral}
             </p>
           )}
 
           <button type="submit" className="btn btn-primario btn-ancho" disabled={loading}>
-            {loading && <span className="spinner" />}
+            {loading && <span className="spinner" aria-hidden="true" />}
             {loading ? "Entrando..." : "Iniciar sesión"}
           </button>
         </form>
@@ -158,6 +168,6 @@ export default function Login() {
           <Link to="/registro">Regístrate gratis</Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

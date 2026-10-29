@@ -27,7 +27,7 @@
   --superficie: #ffffff;
   --texto: #251c3f;
   --texto-suave: #6d6787;
-  --texto-tenue: #9a94b5;
+  --texto-tenue: #6f698c; /* 5,15:1 sobre blanco (WCAG AA) */
   --borde: #e7e3f4;
 
   /* Semánticos */

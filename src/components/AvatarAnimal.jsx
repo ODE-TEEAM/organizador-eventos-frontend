@@ -182,7 +182,9 @@ export function animalDe(semilla = '') {
   return ANIMALES[indiceAvatar(semilla)];
 }
 
-export default function AvatarAnimal({ semilla = '', indice, size = 40, className = '', style }) {
+// `decorativo`: el avatar es solo adorno (p. ej. los animales flotantes del
+// login) y se oculta a los lectores de pantalla.
+export default function AvatarAnimal({ semilla = '', indice, size = 40, className = '', style, decorativo = false }) {
   const animal =
     indice !== undefined
       ? ANIMALES[((indice % ANIMALES.length) + ANIMALES.length) % ANIMALES.length]
@@ -192,9 +194,9 @@ export default function AvatarAnimal({ semilla = '', indice, size = 40, classNam
     <span
       className={`avatar ${className}`.trim()}
       style={{ width: size, height: size, ...style }}
-      title={animal.nombre}
-      aria-label={`Avatar de ${animal.nombre}`}
-      role="img"
+      {...(decorativo
+        ? { 'aria-hidden': true }
+        : { title: animal.nombre, 'aria-label': `Avatar de ${animal.nombre}`, role: 'img' })}
     >
       <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden="true">
         <circle cx="32" cy="32" r="32" fill={animal.fondo} />

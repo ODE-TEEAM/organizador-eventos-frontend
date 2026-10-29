@@ -879,8 +879,14 @@ hr {
   opacity: 1;
 }
 
-.gestion-tarjeta[data-estado='pospuesta'] .gestion-info {
-  opacity: 0.75;
+/* Atenuado con color (no con opacidad) para no bajar el contraste del texto. */
+.gestion-tarjeta[data-estado='pospuesta'] .gestion-info h3 {
+  color: var(--texto-suave);
+}
+
+.gestion-tarjeta[data-estado='pospuesta'] .gestion-meta {
+  color: var(--texto-tenue);
+  font-style: italic;
 }
 
 .boton-reactivar {
